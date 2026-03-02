@@ -2,7 +2,7 @@
 
 ## Stack
 - Python / Flask with Jinja2
-- Tailwind CSS (CDN, no build step)
+- Custom design tokens (tokens.css) + layout system (layout.css)
 - Chart.js (CDN)
 - Vanilla JavaScript (no React/Vue)
 - No database -- reads vault files directly with in-memory caching
@@ -16,7 +16,9 @@ parsers/
   history.py        Parse _tasks-history.md
   activity.py       Scan vault for YYMMDD-*.md files
 static/
-  css/main.css      Custom styles
+  tokens.css        Design tokens (--cs- prefix)
+  layout.css        Sidebar layout, cards, tables
+  css/main.css      Application-specific styles
   js/               Page-specific JS
 templates/          Jinja2 templates
 ```
