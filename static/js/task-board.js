@@ -1,14 +1,32 @@
 /**
- * task-board.js -- Kanban board and table view rendering with filters
+ * task-board.js -- Kanban board and table view with badge-based filters
  */
 
 let currentView = 'kanban';
 let allTasks = [];
 let currentSort = { field: 'id', dir: 'asc' };
+let selectedStatus = null;
+let selectedPriority = null;
+
+const STATUS_ORDER = ['pending', 'in_progress', 'blocked', 'completed'];
+const STATUS_LABELS = {
+    pending: 'Pending',
+    in_progress: 'In Progress',
+    blocked: 'Blocked',
+    completed: 'Completed',
+};
+
+const PRIORITY_ORDER = ['P0', 'P1', 'P2', 'P3'];
+const PRIORITY_LABELS = {
+    P0: 'P0 Critical',
+    P1: 'P1 High',
+    P2: 'P2 Important',
+    P3: 'P3 Research',
+};
 
 document.addEventListener('DOMContentLoaded', () => {
     initViewToggle();
-    initFilters();
+    initTagFilter();
     initTableSort();
     loadTasks();
     window.addEventListener('folder-change', loadTasks);
@@ -28,7 +46,7 @@ function initViewToggle() {
         tableBtn.className = 'btn btn-secondary btn-sm';
         document.getElementById('kanban-board').classList.remove('hidden');
         document.getElementById('table-view').classList.add('hidden');
-        loadTasks();
+        applyFilters();
     });
 
     tableBtn.addEventListener('click', () => {
@@ -41,23 +59,120 @@ function initViewToggle() {
     });
 }
 
+// ---- Status badges ----
+
+function renderStatusBadges() {
+    const container = document.getElementById('status-badges');
+    if (!container) return;
+
+    const counts = {};
+    STATUS_ORDER.forEach(s => { counts[s] = 0; });
+    allTasks.forEach(t => {
+        const s = t.status || 'pending';
+        if (counts[s] !== undefined) counts[s]++;
+        else counts.pending++;
+    });
+
+    const total = allTasks.length;
+    const allActive = selectedStatus === null ? ' active' : '';
+    let html = `<button class="day-badge day-badge-all${allActive}" onclick="filterByStatus(null)">All <span class="day-badge-count">${total}</span></button>`;
+
+    STATUS_ORDER.forEach(status => {
+        const count = counts[status];
+        if (count === 0 && status !== 'blocked') return;
+        const label = STATUS_LABELS[status];
+        const isActive = selectedStatus === status ? ' active' : '';
+        html += `<button class="day-badge day-badge-status-${status}${isActive}" onclick="filterByStatus('${status}')" data-status="${status}">
+            <span class="day-badge-label">${label}</span>
+            <span class="day-badge-count">${count}</span>
+        </button>`;
+    });
+
+    container.innerHTML = html;
+}
+
+function filterByStatus(status) {
+    selectedStatus = status;
+
+    // Update badge active state
+    document.querySelectorAll('#status-badges .day-badge').forEach(el => {
+        el.classList.remove('active');
+    });
+    if (status === null) {
+        document.querySelector('#status-badges .day-badge-all').classList.add('active');
+    } else {
+        const badge = document.querySelector(`#status-badges .day-badge[data-status="${status}"]`);
+        if (badge) badge.classList.add('active');
+    }
+
+    applyFilters();
+}
+
+// ---- Priority badges ----
+
+function renderPriorityBadges() {
+    const container = document.getElementById('priority-badges');
+    if (!container) return;
+
+    const counts = {};
+    PRIORITY_ORDER.forEach(p => { counts[p] = 0; });
+    allTasks.forEach(t => {
+        const p = t.priority || 'P3';
+        if (counts[p] !== undefined) counts[p]++;
+        else counts.P3++;
+    });
+
+    const allActive = selectedPriority === null ? ' active' : '';
+    let html = `<button class="day-badge day-badge-all${allActive}" onclick="filterByPriority(null)">All <span class="day-badge-count">${allTasks.length}</span></button>`;
+
+    PRIORITY_ORDER.forEach(priority => {
+        const count = counts[priority];
+        if (count === 0) return;
+        const label = PRIORITY_LABELS[priority];
+        const isActive = selectedPriority === priority ? ' active' : '';
+        html += `<button class="day-badge day-badge-priority-${priority.toLowerCase()}${isActive}" onclick="filterByPriority('${priority}')" data-priority="${priority}">
+            <span class="day-badge-label">${label}</span>
+            <span class="day-badge-count">${count}</span>
+        </button>`;
+    });
+
+    container.innerHTML = html;
+}
+
+function filterByPriority(priority) {
+    selectedPriority = priority;
+
+    // Update badge active state
+    document.querySelectorAll('#priority-badges .day-badge').forEach(el => {
+        el.classList.remove('active');
+    });
+    if (priority === null) {
+        document.querySelector('#priority-badges .day-badge-all').classList.add('active');
+    } else {
+        const badge = document.querySelector(`#priority-badges .day-badge[data-priority="${priority}"]`);
+        if (badge) badge.classList.add('active');
+    }
+
+    applyFilters();
+}
+
 // ---- Filters ----
 
-function initFilters() {
-    const priorityFilter = document.getElementById('filter-priority');
+function initTagFilter() {
     const tagFilter = document.getElementById('filter-tags');
-
-    if (priorityFilter) priorityFilter.addEventListener('change', applyFilters);
     if (tagFilter) tagFilter.addEventListener('input', applyFilters);
 }
 
 function getFilteredTasks(tasks) {
-    const priorityFilter = document.getElementById('filter-priority');
     const tagFilter = document.getElementById('filter-tags');
     let filtered = tasks;
 
-    if (priorityFilter && priorityFilter.value) {
-        filtered = filtered.filter(t => t.priority === priorityFilter.value);
+    if (selectedStatus !== null) {
+        filtered = filtered.filter(t => (t.status || 'pending') === selectedStatus);
+    }
+
+    if (selectedPriority !== null) {
+        filtered = filtered.filter(t => (t.priority || 'P3') === selectedPriority);
     }
 
     if (tagFilter && tagFilter.value.trim()) {
@@ -84,22 +199,15 @@ async function loadTasks() {
     const params = getApiParams();
 
     try {
-        if (currentView === 'kanban') {
-            const res = await fetch(`/api/tasks/grouped?${params}`);
-            const grouped = await res.json();
-
-            allTasks = [];
-            for (const tasks of Object.values(grouped)) {
-                allTasks.push(...tasks);
-            }
-
-            renderKanban(grouped);
-        }
-
         const allRes = await fetch(`/api/tasks?${params}`);
         allTasks = await allRes.json();
 
-        if (currentView === 'table') {
+        renderStatusBadges();
+        renderPriorityBadges();
+
+        if (currentView === 'kanban') {
+            renderKanban(allTasks);
+        } else {
             renderTable();
         }
     } catch (err) {
@@ -109,23 +217,21 @@ async function loadTasks() {
 
 // ---- Kanban rendering ----
 
-function renderKanban(grouped) {
-    let groups = grouped;
-    if (Array.isArray(grouped)) {
-        groups = { pending: [], in_progress: [], blocked: [], completed: [] };
-        for (const t of grouped) {
-            const s = t.status || 'pending';
-            if (groups[s]) groups[s].push(t);
-            else groups.pending.push(t);
-        }
+function renderKanban(tasks) {
+    const groups = { pending: [], in_progress: [], blocked: [], completed: [] };
+    const source = Array.isArray(tasks) ? tasks : [];
+    for (const t of source) {
+        const s = t.status || 'pending';
+        if (groups[s]) groups[s].push(t);
+        else groups.pending.push(t);
     }
 
-    for (const [status, tasks] of Object.entries(groups)) {
+    for (const [status, statusTasks] of Object.entries(groups)) {
         const col = document.getElementById(`col-${status}`);
         const count = document.getElementById(`count-${status}`);
         if (!col) continue;
 
-        const filtered = getFilteredTasks(tasks);
+        const filtered = getFilteredTasks(statusTasks);
         if (count) count.textContent = filtered.length;
 
         if (filtered.length === 0) {
@@ -134,6 +240,24 @@ function renderKanban(grouped) {
         }
 
         col.innerHTML = filtered.map(t => renderCard(t)).join('');
+    }
+
+    // Show/hide columns based on status filter
+    if (selectedStatus !== null) {
+        STATUS_ORDER.forEach(s => {
+            const col = document.getElementById(`col-${s}`);
+            if (!col) return;
+            const column = col.closest('.kanban-column');
+            if (!column) return;
+            column.classList.toggle('hidden', s !== selectedStatus);
+        });
+    } else {
+        STATUS_ORDER.forEach(s => {
+            const col = document.getElementById(`col-${s}`);
+            if (!col) return;
+            const column = col.closest('.kanban-column');
+            if (column) column.classList.remove('hidden');
+        });
     }
 }
 

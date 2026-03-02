@@ -1,8 +1,10 @@
 /**
- * recent.js -- Recent Updates page: file list grouped by day + markdown preview
+ * recent.js -- Recent Updates page: day badges, file list, markdown preview
  */
 
 let selectedFilePath = null;
+let selectedDay = null;
+let cachedData = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     loadRecentFiles();
@@ -19,23 +21,104 @@ async function loadRecentFiles() {
     try {
         const res = await fetch(`/api/files/recent?${params}&days=${days}`);
         const data = await res.json();
-        renderFileList(data);
+        cachedData = data;
+        selectedDay = null;
+        renderDayBadges(data);
+        renderFileList(data, null);
     } catch (err) {
         console.error('Failed to load recent files:', err);
     }
 }
 
-function renderFileList(data) {
-    const container = document.getElementById('file-list');
+function getDayLabel(dayKey) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const d = new Date(dayKey + 'T00:00:00');
+    const diff = Math.round((d - today) / 86400000);
+
+    if (diff === 0) return 'Today';
+    if (diff === -1) return 'Yesterday';
+    if (diff === 1) return 'Tomorrow';
+
+    const weekdayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    return weekdayNames[d.getDay()];
+}
+
+function getDayType(dayKey) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const d = new Date(dayKey + 'T00:00:00');
+    const diff = Math.round((d - today) / 86400000);
+
+    if (diff === 0) return 'today';
+    if (diff === 1) return 'tomorrow';
+    if (diff < 0) return 'past';
+    return 'future';
+}
+
+function renderDayBadges(data) {
+    const container = document.getElementById('day-badges');
     const countEl = document.getElementById('file-count');
+    const days = data.days;
+    const sortedDays = Object.keys(days).sort();
 
     countEl.textContent = `${data.total} files`;
 
+    if (sortedDays.length === 0) {
+        container.innerHTML = '';
+        return;
+    }
+
+    // "All" badge first
+    const allBadge = `<button class="day-badge day-badge-all active" onclick="filterByDay(null)">All <span class="day-badge-count">${data.total}</span></button>`;
+
+    const badges = sortedDays.map(dayKey => {
+        const files = days[dayKey];
+        const label = getDayLabel(dayKey);
+        const type = getDayType(dayKey);
+        const dateStr = dayKey.slice(5); // MM-DD
+
+        return `<button class="day-badge day-badge-${type}" onclick="filterByDay('${dayKey}')" data-day="${dayKey}">
+            <span class="day-badge-label">${label}</span>
+            <span class="day-badge-date">${dateStr}</span>
+            <span class="day-badge-count">${files.length}</span>
+        </button>`;
+    }).join('');
+
+    container.innerHTML = allBadge + badges;
+}
+
+function filterByDay(dayKey) {
+    selectedDay = dayKey;
+    selectedFilePath = null;
+
+    // Update badge active state
+    document.querySelectorAll('.day-badge').forEach(el => {
+        el.classList.remove('active');
+    });
+    if (dayKey === null) {
+        document.querySelector('.day-badge-all').classList.add('active');
+    } else {
+        const badge = document.querySelector(`.day-badge[data-day="${dayKey}"]`);
+        if (badge) badge.classList.add('active');
+    }
+
+    renderFileList(cachedData, dayKey);
+}
+
+function renderFileList(data, filterDay) {
+    const container = document.getElementById('file-list');
     const days = data.days;
-    const sortedDays = Object.keys(days).sort().reverse();
+    let sortedDays = Object.keys(days).sort().reverse();
+
+    if (filterDay) {
+        sortedDays = sortedDays.filter(d => d === filterDay);
+    }
 
     if (sortedDays.length === 0) {
-        container.innerHTML = '<p class="empty-state">No files in this period</p>';
+        container.innerHTML = '<p class="empty-state">No files for this day</p>';
+        resetPreview();
         return;
     }
 
@@ -43,16 +126,16 @@ function renderFileList(data) {
 
     container.innerHTML = sortedDays.map(dayKey => {
         const files = days[dayKey];
-        const d = new Date(dayKey + 'T00:00:00');
-        const weekday = weekdayNames[d.getDay()];
-        const isToday = dayKey === new Date().toISOString().slice(0, 10);
-        const dayLabel = isToday ? 'Today' : weekday;
+        const label = getDayLabel(dayKey);
+        const fullLabel = (label === 'Today' || label === 'Yesterday' || label === 'Tomorrow')
+            ? label
+            : weekdayNames[new Date(dayKey + 'T00:00:00').getDay()];
 
         return `
             <div class="day-group">
                 <div class="day-group-header">
                     <div class="day-group-label">
-                        ${dayLabel}<span class="day-group-date">${dayKey}</span>
+                        ${fullLabel}<span class="day-group-date">${dayKey}</span>
                     </div>
                     <span class="day-group-count">${files.length}</span>
                 </div>
@@ -61,13 +144,20 @@ function renderFileList(data) {
         `;
     }).join('');
 
-    // Auto-select first file if nothing selected
-    if (!selectedFilePath && sortedDays.length > 0) {
+    // Auto-select first file
+    if (sortedDays.length > 0) {
         const firstFile = days[sortedDays[0]][0];
         if (firstFile) {
             selectFile(firstFile.relative_path, firstFile.obsidian_link);
         }
     }
+}
+
+function resetPreview() {
+    const headerEl = document.getElementById('preview-header');
+    headerEl.innerHTML = '<span class="preview-placeholder">Select a file to preview</span><a id="preview-obsidian-link" href="#" class="preview-link hidden">Open in Obsidian</a>';
+    const contentEl = document.getElementById('preview-content');
+    contentEl.innerHTML = '<p class="preview-empty">Click a file on the left to see its content here</p>';
 }
 
 function renderFileItem(f) {

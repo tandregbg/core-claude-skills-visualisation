@@ -307,6 +307,269 @@
     color: var(--cs-on-surface-tertiary);
 }
 
+/* === DAY BADGES === */
+
+.day-badges {
+    display: flex;
+    gap: var(--cs-spacing-sm);
+    margin-bottom: var(--cs-spacing-lg);
+    flex-wrap: wrap;
+}
+
+.day-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border: 1px solid var(--cs-elevation-solid-3);
+    border-radius: 9999px;
+    background: var(--cs-elevation-solid-0);
+    color: var(--cs-on-surface-secondary);
+    font-size: var(--cs-font-size-body-sm);
+    font-family: var(--cs-font-family-web);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+}
+
+.day-badge:hover {
+    border-color: var(--cs-elevation-solid-4);
+    background: var(--cs-elevation-solid-2);
+}
+
+.day-badge.active {
+    background: var(--cs-action-primary-enabled);
+    border-color: var(--cs-action-primary-enabled);
+    color: #ffffff;
+}
+
+.day-badge.active .day-badge-count {
+    background: rgba(255, 255, 255, 0.25);
+    color: #ffffff;
+}
+
+.day-badge.active .day-badge-date {
+    color: rgba(255, 255, 255, 0.75);
+}
+
+.day-badge-label {
+    font-weight: var(--cs-font-weight-semibold);
+}
+
+.day-badge-date {
+    font-size: 11px;
+    color: var(--cs-on-surface-tertiary);
+}
+
+.day-badge-count {
+    font-size: 11px;
+    font-weight: var(--cs-font-weight-semibold);
+    background: var(--cs-elevation-solid-2);
+    color: var(--cs-on-surface-secondary);
+    padding: 1px 7px;
+    border-radius: 9999px;
+    min-width: 18px;
+    text-align: center;
+}
+
+/* Today badge accent */
+.day-badge-today {
+    border-color: var(--cs-action-primary-enabled);
+    color: var(--cs-action-primary-enabled);
+}
+
+.day-badge-today .day-badge-count {
+    background: #dbeafe;
+    color: var(--cs-action-primary-enabled);
+}
+
+/* Tomorrow badge accent */
+.day-badge-tomorrow {
+    border-color: #d97706;
+    color: #92400e;
+}
+
+.day-badge-tomorrow .day-badge-count {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+/* Active overrides for colored badges */
+.day-badge-today.active,
+.day-badge-tomorrow.active {
+    background: var(--cs-action-primary-enabled);
+    border-color: var(--cs-action-primary-enabled);
+    color: #ffffff;
+}
+
+.day-badge-today.active .day-badge-count,
+.day-badge-tomorrow.active .day-badge-count {
+    background: rgba(255, 255, 255, 0.25);
+    color: #ffffff;
+}
+
+/* Filter badges row (status + priority on one line) */
+
+.filter-badges-row {
+    display: flex;
+    align-items: center;
+    gap: var(--cs-spacing-sm);
+    margin-bottom: var(--cs-spacing-lg);
+    flex-wrap: wrap;
+}
+
+.filter-badges-row .day-badges {
+    margin-bottom: 0;
+}
+
+.badge-separator {
+    width: 1px;
+    height: 24px;
+    background: var(--cs-elevation-solid-4);
+    flex-shrink: 0;
+}
+
+.filter-badges-row .filter-input {
+    margin-left: auto;
+}
+
+/* Priority badges */
+
+.day-badge-priority-p0 {
+    border-color: #ef4444;
+    color: #b91c1c;
+}
+
+.day-badge-priority-p0 .day-badge-count {
+    background: #fee2e2;
+    color: #b91c1c;
+}
+
+.day-badge-priority-p1 {
+    border-color: #f97316;
+    color: #c2410c;
+}
+
+.day-badge-priority-p1 .day-badge-count {
+    background: #ffedd5;
+    color: #c2410c;
+}
+
+.day-badge-priority-p2 {
+    border-color: #3b82f6;
+    color: #1e40af;
+}
+
+.day-badge-priority-p2 .day-badge-count {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.day-badge-priority-p3 {
+    border-color: #9ca3af;
+    color: #6b7280;
+}
+
+.day-badge-priority-p3 .day-badge-count {
+    background: #f3f4f6;
+    color: #6b7280;
+}
+
+/* Active overrides for priority badges */
+.day-badge-priority-p0.active {
+    background: #b91c1c;
+    border-color: #b91c1c;
+    color: #ffffff;
+}
+
+.day-badge-priority-p1.active {
+    background: #c2410c;
+    border-color: #c2410c;
+    color: #ffffff;
+}
+
+.day-badge-priority-p2.active {
+    background: #1e40af;
+    border-color: #1e40af;
+    color: #ffffff;
+}
+
+.day-badge-priority-p3.active {
+    background: #6b7280;
+    border-color: #6b7280;
+    color: #ffffff;
+}
+
+.day-badge-priority-p0.active .day-badge-count,
+.day-badge-priority-p1.active .day-badge-count,
+.day-badge-priority-p2.active .day-badge-count,
+.day-badge-priority-p3.active .day-badge-count {
+    background: rgba(255, 255, 255, 0.25);
+    color: #ffffff;
+}
+
+/* Status badges for tasks page */
+.day-badge-status-pending {
+    border-color: var(--cs-elevation-solid-4);
+    color: var(--cs-on-surface-secondary);
+}
+
+.day-badge-status-in_progress {
+    border-color: #3b82f6;
+    color: #1e40af;
+}
+
+.day-badge-status-in_progress .day-badge-count {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.day-badge-status-blocked {
+    border-color: #f97316;
+    color: #9a3412;
+}
+
+.day-badge-status-blocked .day-badge-count {
+    background: #fff7ed;
+    color: #9a3412;
+}
+
+.day-badge-status-completed {
+    border-color: #22c55e;
+    color: #166534;
+}
+
+.day-badge-status-completed .day-badge-count {
+    background: #f0fdf4;
+    color: #166534;
+}
+
+/* Active overrides for status badges */
+.day-badge-status-in_progress.active {
+    background: #1e40af;
+    border-color: #1e40af;
+    color: #ffffff;
+}
+
+.day-badge-status-blocked.active {
+    background: #9a3412;
+    border-color: #9a3412;
+    color: #ffffff;
+}
+
+.day-badge-status-completed.active {
+    background: #166534;
+    border-color: #166534;
+    color: #ffffff;
+}
+
+.day-badge-status-in_progress.active .day-badge-count,
+.day-badge-status-blocked.active .day-badge-count,
+.day-badge-status-completed.active .day-badge-count {
+    background: rgba(255, 255, 255, 0.25);
+    color: #ffffff;
+}
+
 /* === RECENT FILES PAGE === */
 
 .recent-layout {

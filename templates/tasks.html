@@ -12,15 +12,12 @@
     </div>
 </div>
 
-<!-- Filters -->
-<div class="filter-bar">
-    <select id="filter-priority" class="filter-select">
-        <option value="">All priorities</option>
-        <option value="P0">P0 Critical</option>
-        <option value="P1">P1 High</option>
-        <option value="P2">P2 Important</option>
-        <option value="P3">P3 Research</option>
-    </select>
+<!-- Filter badges: status + priority on one row -->
+<div class="filter-badges-row">
+    <div id="status-badges" class="day-badges"></div>
+    <span class="badge-separator"></span>
+    <div id="priority-badges" class="day-badges"></div>
+    <span class="badge-separator"></span>
     <input type="text" id="filter-tags" placeholder="Filter by tag..." class="filter-input">
 </div>
 
