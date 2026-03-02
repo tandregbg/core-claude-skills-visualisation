@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+
+{% block title %}Task #{{ task_id }} -- core-skills{% endblock %}
+{% block breadcrumb %}Task #{{ task_id }}{% endblock %}
+
+{% block header %}
+<header class="page-header">
+    <nav class="breadcrumb">
+        <a href="/">core-skills</a>
+        <span class="separator">/</span>
+        <a href="/tasks">Tasks</a>
+        <span class="separator">/</span>
+        <span class="current">#{{ task_id }}</span>
+    </nav>
+</header>
+{% endblock %}
+
+{% block content %}
+<div id="task-detail-content">
+    <p class="empty-state">Loading...</p>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const TASK_ID = {{ task_id }};
+
+    document.addEventListener('DOMContentLoaded', () => {
+        loadTaskDetail();
+    });
+
+    async function loadTaskDetail() {
+        const params = getApiParams();
+        try {
+            const res = await fetch(`/api/tasks/${TASK_ID}?${params}`);
+            if (!res.ok) {
+                const err = await res.json();
+                document.getElementById('task-detail-content').innerHTML =
+                    `<div class="card"><p style="color: var(--cs-status-critical);">${escapeHtml(err.error || 'Failed to load task')}</p></div>`;
+                return;
+            }
+
+            const task = await res.json();
+            renderTaskDetail(task);
+        } catch (err) {
+            console.error('Failed to load task:', err);
+        }
+    }
+
+    function renderTaskDetail(t) {
+        const container = document.getElementById('task-detail-content');
+
+        // Source link
+        let sourceHtml = '';
+        if (t.source && t.source.file) {
+            const obsidianFile = t.source.file.replace(/\.md$/, '');
+            const obsidianLink = `obsidian://open?vault=Tomas&file=${encodeURIComponent(obsidianFile)}`;
+            sourceHtml = `
+                <div class="detail-field">
+                    <span class="detail-label">Source</span>
+                    <a href="${obsidianLink}" class="detail-link">${escapeHtml(t.source.file)}</a>
+                    ${t.source.section ? `<span class="detail-secondary">(${escapeHtml(t.source.section)})</span>` : ''}
+                </div>
+            `;
+        }
+
+        // Tags
+        const tagsHtml = (t.tags || []).map(tag =>
+            `<span class="tag-badge">${escapeHtml(tag)}</span>`
+        ).join(' ');
+
+        // Notes timeline
+        const notes = t.notes || [];
+        let notesHtml = '';
+        if (notes.length > 0) {
+            notesHtml = `
+                <div class="card" style="margin-top: var(--cs-spacing-xl);">
+                    <div class="card-header">Notes Timeline</div>
+                    <div class="notes-timeline">
+                        ${notes.map(n => `
+                            <div class="note-entry">
+                                <div class="note-dot"></div>
+                                <div class="note-date">${n.date || ''}</div>
+                                <div class="note-text">${escapeHtml(n.note || '')}</div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        // History entry
+        let historyHtml = '';
+        if (t.history) {
+            historyHtml = `
+                <div class="card completed-card" style="margin-top: var(--cs-spacing-xl);">
+                    <div class="card-header">Completed</div>
+                    <p class="detail-secondary">${t.history.completed || ''}</p>
+                    ${t.history.note ? `<p style="margin-top: var(--cs-spacing-sm);">${escapeHtml(t.history.note)}</p>` : ''}
+                </div>
+            `;
+        }
+
+        container.innerHTML = `
+            <div class="card">
+                <div class="detail-meta">
+                    <span class="priority-badge priority-${t.priority.toLowerCase()}">${t.priority}</span>
+                    <span class="status-badge status-${t.status}">${t.status}</span>
+                    <span class="project-badge project-${t.project}">${t.project}</span>
+                    ${t.private ? '<span class="private-badge">private</span>' : ''}
+                </div>
+
+                <h1 class="page-title" style="margin-top: var(--cs-spacing-lg);">#${t.id} ${escapeHtml(t.task)}</h1>
+
+                <div class="detail-grid">
+                    <div class="detail-field">
+                        <span class="detail-label">Created</span>
+                        <span>${t.created || ''}</span>
+                    </div>
+                    <div class="detail-field">
+                        <span class="detail-label">Due</span>
+                        <span class="${t.is_overdue ? 'overdue-text' : ''}">${t.due_display || 'None'}</span>
+                        ${t.is_overdue ? `<span class="overdue-days">(${t.days_overdue}d overdue)</span>` : ''}
+                    </div>
+                    <div class="detail-field">
+                        <span class="detail-label">Notes</span>
+                        <span>${t.notes_count}</span>
+                    </div>
+                    <div class="detail-field">
+                        <span class="detail-label">Tags</span>
+                        <span>${tagsHtml || '<span class="detail-secondary">None</span>'}</span>
+                    </div>
+                </div>
+
+                ${sourceHtml}
+            </div>
+
+            ${notesHtml}
+            ${historyHtml}
+        `;
+    }
+</script>
+{% endblock %}

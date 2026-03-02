@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+
+{% block title %}Tasks -- core-skills{% endblock %}
+{% block breadcrumb %}Tasks{% endblock %}
+
+{% block content %}
+<div class="page-title-row">
+    <h1 class="page-title">Tasks</h1>
+    <div class="view-controls">
+        <button id="view-kanban" class="btn btn-primary btn-sm">Kanban</button>
+        <button id="view-table" class="btn btn-secondary btn-sm">Table</button>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="filter-bar">
+    <select id="filter-priority" class="filter-select">
+        <option value="">All priorities</option>
+        <option value="P0">P0 Critical</option>
+        <option value="P1">P1 High</option>
+        <option value="P2">P2 Important</option>
+        <option value="P3">P3 Research</option>
+    </select>
+    <input type="text" id="filter-tags" placeholder="Filter by tag..." class="filter-input">
+</div>
+
+<!-- Kanban board -->
+<div id="kanban-board" class="kanban-board">
+    <div class="kanban-column">
+        <div class="kanban-column-header">
+            <span class="kanban-column-title">Pending</span>
+            <span class="kanban-count" id="count-pending">0</span>
+        </div>
+        <div id="col-pending" class="kanban-cards"></div>
+    </div>
+    <div class="kanban-column">
+        <div class="kanban-column-header">
+            <span class="kanban-column-title" style="color: var(--cs-status-info);">In Progress</span>
+            <span class="kanban-count" id="count-in_progress">0</span>
+        </div>
+        <div id="col-in_progress" class="kanban-cards"></div>
+    </div>
+    <div class="kanban-column">
+        <div class="kanban-column-header">
+            <span class="kanban-column-title" style="color: var(--cs-status-warning);">Blocked</span>
+            <span class="kanban-count" id="count-blocked">0</span>
+        </div>
+        <div id="col-blocked" class="kanban-cards"></div>
+    </div>
+    <div class="kanban-column">
+        <div class="kanban-column-header">
+            <span class="kanban-column-title" style="color: var(--cs-status-success);">Completed (7d)</span>
+            <span class="kanban-count" id="count-completed">0</span>
+        </div>
+        <div id="col-completed" class="kanban-cards"></div>
+    </div>
+</div>
+
+<!-- Table view (hidden by default) -->
+<div id="table-view" class="hidden">
+    <div class="card" style="padding: 0; overflow: hidden;">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th class="sortable-header" data-sort="id">ID</th>
+                    <th class="sortable-header" data-sort="priority">Priority</th>
+                    <th>Task</th>
+                    <th class="sortable-header" data-sort="project">Project</th>
+                    <th class="sortable-header" data-sort="status">Status</th>
+                    <th class="sortable-header" data-sort="due">Due</th>
+                    <th>Tags</th>
+                </tr>
+            </thead>
+            <tbody id="task-table-body"></tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/task-board.js') }}"></script>
+{% endblock %}

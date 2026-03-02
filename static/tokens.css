@@ -1,0 +1,120 @@
+/**
+ * core-skills Design Tokens
+ * Based on Generic Design System Kit
+ * Neutral/professional palette for data visualization
+ */
+
+:root {
+    /* === BORDER RADIUS === */
+    --cs-border-radius-xs: 8px;
+    --cs-border-radius-sm: 12px;
+    --cs-border-radius-md: 16px;
+
+    /* === SPACING === */
+    --cs-spacing-2xs: 2px;
+    --cs-spacing-xs: 4px;
+    --cs-spacing-sm: 8px;
+    --cs-spacing-md: 12px;
+    --cs-spacing-lg: 16px;
+    --cs-spacing-xl: 20px;
+    --cs-spacing-2xl: 24px;
+    --cs-spacing-3xl: 28px;
+    --cs-spacing-4xl: 36px;
+
+    /* === TYPOGRAPHY === */
+    --cs-font-family-web: Inter, -apple-system, BlinkMacSystemFont, sans-serif;
+    --cs-font-size-body-sm: 12px;
+    --cs-font-size-body-md: 14px;
+    --cs-font-size-body-lg: 16px;
+    --cs-font-size-headline-sm: 18px;
+    --cs-font-size-headline-md: 20px;
+    --cs-font-size-headline-lg: 24px;
+    --cs-font-size-headline-xl: 28px;
+    --cs-font-weight-regular: 400;
+    --cs-font-weight-medium: 500;
+    --cs-font-weight-semibold: 600;
+    --cs-font-weight-bold: 700;
+
+    /* === ELEVATION (Light) === */
+    --cs-elevation-solid-0: #fff;
+    --cs-elevation-solid-1: #f8f9fa;
+    --cs-elevation-solid-2: #f1f3f5;
+    --cs-elevation-solid-3: #dee2e6;
+    --cs-elevation-solid-4: #adb5bd;
+    --cs-elevation-solid-5: #868e96;
+    --cs-elevation-solid-6: #495057;
+    --cs-elevation-solid-7: #343a40;
+    --cs-elevation-solid-8: #212529;
+
+    /* === ACTIONS === */
+    --cs-action-primary-enabled: #212529;
+    --cs-action-primary-hover: #343a40;
+    --cs-action-primary-active: #495057;
+    --cs-action-on-action-primary: #fff;
+    --cs-action-secondary-enabled: #f1f3f5;
+    --cs-action-secondary-hover: #e9ecef;
+    --cs-action-on-action-secondary: #212529;
+
+    /* === ON SURFACE === */
+    --cs-on-surface-primary: #212529;
+    --cs-on-surface-secondary: #495057;
+    --cs-on-surface-tertiary: #868e96;
+
+    /* === STATUS === */
+    --cs-status-critical: #ef4444;
+    --cs-status-warning: #f97316;
+    --cs-status-success: #22c55e;
+    --cs-status-info: #3b82f6;
+
+    /* === PROJECT COLORS === */
+    --cs-project-sonetel: #3b82f6;
+    --cs-project-sonetel-bg: #dbeafe;
+    --cs-project-sonetel-text: #1e40af;
+    --cs-project-t1k: #22c55e;
+    --cs-project-t1k-bg: #dcfce7;
+    --cs-project-t1k-text: #166534;
+    --cs-project-personal: #6b7280;
+    --cs-project-personal-bg: #f3f4f6;
+    --cs-project-personal-text: #374151;
+    --cs-project-tajmad: #f97316;
+    --cs-project-tajmad-bg: #ffedd5;
+    --cs-project-tajmad-text: #9a3412;
+
+    /* === PRIORITY COLORS === */
+    --cs-priority-p0: #ef4444;
+    --cs-priority-p0-bg: #fef2f2;
+    --cs-priority-p0-text: #991b1b;
+    --cs-priority-p1: #f97316;
+    --cs-priority-p1-bg: #fff7ed;
+    --cs-priority-p1-text: #9a3412;
+    --cs-priority-p2: #3b82f6;
+    --cs-priority-p2-bg: #eff6ff;
+    --cs-priority-p2-text: #1e40af;
+    --cs-priority-p3: #9ca3af;
+    --cs-priority-p3-bg: #f9fafb;
+    --cs-priority-p3-text: #4b5563;
+}
+
+/* === DARK THEME === */
+[data-theme="dark"] {
+    --cs-elevation-solid-0: #1a1b1e;
+    --cs-elevation-solid-1: #212226;
+    --cs-elevation-solid-2: #2c2d31;
+    --cs-elevation-solid-3: #3a3b40;
+    --cs-elevation-solid-4: #555;
+    --cs-elevation-solid-5: #777;
+    --cs-elevation-solid-6: #aaa;
+    --cs-elevation-solid-7: #ccc;
+    --cs-elevation-solid-8: #f0f0f0;
+
+    --cs-action-primary-enabled: #f0f0f0;
+    --cs-action-primary-hover: #ccc;
+    --cs-action-on-action-primary: #1a1b1e;
+    --cs-action-secondary-enabled: #2c2d31;
+    --cs-action-secondary-hover: #3a3b40;
+    --cs-action-on-action-secondary: #f0f0f0;
+
+    --cs-on-surface-primary: #f0f0f0;
+    --cs-on-surface-secondary: #aaa;
+    --cs-on-surface-tertiary: #666;
+}

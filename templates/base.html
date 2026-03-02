@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}core-skills{% endblock %}</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='tokens.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='layout.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+    {% block head %}{% endblock %}
+</head>
+<body>
+    <div class="app-layout">
+        <!-- Sidebar -->
+        <nav class="sidebar">
+            <div class="sidebar-brand">
+                <h1>
+                    <span class="logo">cs</span>
+                    <span>core-skills</span>
+                </h1>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-label">Views</div>
+                <a href="/" class="nav-item" data-page="index">
+                    <span class="dot"></span>
+                    <span>Dashboard</span>
+                </a>
+                <a href="/tasks" class="nav-item" data-page="tasks">
+                    <span class="dot"></span>
+                    <span>Tasks</span>
+                </a>
+                <a href="/recent" class="nav-item" data-page="recent">
+                    <span class="dot"></span>
+                    <span>Recent</span>
+                </a>
+                <a href="/activity" class="nav-item" data-page="activity">
+                    <span class="dot"></span>
+                    <span>Activity</span>
+                </a>
+            </div>
+
+            <!-- Controls at bottom of sidebar -->
+            <div class="sidebar-controls">
+                <div class="sidebar-control-label">Project</div>
+                <select id="folder-select">
+                    <option value="all">All projects</option>
+                </select>
+
+                <label>
+                    <input type="checkbox" id="private-toggle">
+                    <span>Show private</span>
+                </label>
+                <label>
+                    <input type="checkbox" id="auto-refresh-toggle">
+                    <span>Auto-refresh</span>
+                </label>
+
+                <button id="refresh-btn" class="sidebar-btn" style="margin-top: 8px;">
+                    Refresh data
+                </button>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            {% block header %}
+            <header class="page-header">
+                <nav class="breadcrumb">
+                    <a href="/">core-skills</a>
+                    <span class="separator">/</span>
+                    <span class="current">{% block breadcrumb %}Dashboard{% endblock %}</span>
+                </nav>
+            </header>
+            {% endblock %}
+
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

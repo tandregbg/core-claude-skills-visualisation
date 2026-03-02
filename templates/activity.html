@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block title %}Activity -- core-skills{% endblock %}
+{% block breadcrumb %}Activity{% endblock %}
+
+{% block content %}
+<h1 class="page-title">Activity</h1>
+
+<!-- Calendar heatmap -->
+<div class="card">
+    <div class="card-header">Activity Heatmap (365 days)</div>
+    <div class="heatmap-wrapper">
+        <div id="heatmap" class="heatmap-grid"></div>
+    </div>
+    <div class="heatmap-legend">
+        <span>Less</span>
+        <span class="heatmap-cell level-0"></span>
+        <span class="heatmap-cell level-1"></span>
+        <span class="heatmap-cell level-2"></span>
+        <span class="heatmap-cell level-3"></span>
+        <span class="heatmap-cell level-4"></span>
+        <span>More</span>
+    </div>
+</div>
+
+<!-- Charts row -->
+<div class="charts-row">
+    <div class="card">
+        <div class="card-header">Meeting Frequency by Domain</div>
+        <div class="chart-container chart-tall">
+            <canvas id="domain-chart"></canvas>
+        </div>
+    </div>
+    <div class="card">
+        <div class="card-header">File Types</div>
+        <div class="chart-container chart-tall">
+            <canvas id="type-chart"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- Weekly trend -->
+<div class="card">
+    <div class="card-header">Activity Trend (last 12 weeks)</div>
+    <div class="chart-container">
+        <canvas id="trend-chart"></canvas>
+    </div>
+</div>
+
+<!-- Recent files -->
+<div class="card">
+    <div class="card-header">Recent Files</div>
+    <div id="recent-files">
+        <p class="empty-state">Loading...</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/heatmap.js') }}"></script>
+<script src="{{ url_for('static', filename='js/activity.js') }}"></script>
+{% endblock %}

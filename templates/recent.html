@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block title %}Recent Updates -- core-skills{% endblock %}
+{% block breadcrumb %}Recent{% endblock %}
+
+{% block content %}
+<div class="page-title-row">
+    <h1 class="page-title">Recent Updates</h1>
+    <div class="view-controls">
+        <select id="days-select" class="filter-select">
+            <option value="3">Last 3 days</option>
+            <option value="7" selected>Last 7 days</option>
+            <option value="14">Last 14 days</option>
+            <option value="30">Last 30 days</option>
+        </select>
+        <span class="file-count-label" id="file-count"></span>
+    </div>
+</div>
+
+<!-- Two-column layout: file list + content preview -->
+<div class="recent-layout">
+    <!-- Left: file list grouped by day -->
+    <div id="file-list" class="recent-file-list">
+        <p class="empty-state">Loading...</p>
+    </div>
+
+    <!-- Right: content preview -->
+    <div class="recent-preview">
+        <div id="preview-header" class="recent-preview-header">
+            <span class="preview-placeholder">Select a file to preview</span>
+            <a id="preview-obsidian-link" href="#" class="preview-link hidden">Open in Obsidian</a>
+        </div>
+        <div id="preview-content" class="recent-preview-content prose">
+            <p class="preview-empty">Click a file on the left to see its content here</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/recent.js') }}"></script>
+{% endblock %}
