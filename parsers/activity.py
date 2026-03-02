@@ -9,23 +9,14 @@ from urllib.parse import quote
 
 # Domain classification based on directory path
 DOMAIN_PATTERNS = [
-    ('meetings/management/Henrik', 'management-1on1'),
-    ('meetings/management/Prashant', 'management-1on1'),
     ('meetings/management', 'management'),
-    ('meetings/board/tim', 'board-1on1'),
     ('meetings/board', 'board'),
-    ('meetings/marketing/ppc', 'marketing-ppc'),
-    ('meetings/marketing/meta', 'marketing-meta'),
-    ('meetings/marketing/seo', 'marketing-seo'),
-    ('meetings/marketing/strategic', 'marketing-strategic'),
-    ('meetings/marketing/technical', 'marketing-technical'),
     ('meetings/marketing', 'marketing'),
     ('meetings/operations', 'operations'),
     ('meetings/monthly', 'monthly'),
     ('meetings/development', 'development'),
     ('meetings/unsorted', 'unsorted'),
     ('meetings/', 'meetings-other'),
-    ('projects/sonetel-mobile-v3/meetings', 'mobile-standup'),
     ('projects/', 'project'),
 ]
 
@@ -73,7 +64,7 @@ def parse_filename_date(filename):
     return None
 
 
-def scan_vault_folder(vault_path, folder_path, vault_name='Tomas'):
+def scan_vault_folder(vault_path, folder_path, vault_name=None):
     """Scan a single vault folder for YYMMDD-*.md files.
 
     Returns a list of file entries: {
@@ -91,6 +82,9 @@ def scan_vault_folder(vault_path, folder_path, vault_name='Tomas'):
     full_folder = os.path.join(vault_path, folder_path)
     if not os.path.isdir(full_folder):
         return []
+
+    if vault_name is None:
+        vault_name = os.path.basename(vault_path)
 
     files = []
     for root, dirs, filenames in os.walk(full_folder):
@@ -138,7 +132,7 @@ def scan_vault_folder(vault_path, folder_path, vault_name='Tomas'):
     return files
 
 
-def scan_all_folders(vault_path, projects, vault_name='Tomas'):
+def scan_all_folders(vault_path, projects, vault_name=None):
     """Scan all project folders for dated files.
 
     Returns dict: {project_name: [file_entries]}

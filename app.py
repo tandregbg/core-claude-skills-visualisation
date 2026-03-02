@@ -65,7 +65,7 @@ def _get_activity_cached(projects):
     if _cache['activity']['data'] is not None and (now - _cache['activity']['scan_time']) < config.CACHE_TTL:
         return _cache['activity']['data']
 
-    data = activity_parser.scan_all_folders(config.VAULT_PATH, projects)
+    data = activity_parser.scan_all_folders(config.VAULT_PATH, projects, config.VAULT_NAME)
     _cache['activity']['data'] = data
     _cache['activity']['scan_time'] = now
     return data
@@ -170,7 +170,7 @@ def recent_page():
 
 @app.route('/tasks/<int:task_id>')
 def task_detail(task_id):
-    return render_template('task_detail.html', task_id=task_id)
+    return render_template('task_detail.html', task_id=task_id, vault_name=config.VAULT_NAME)
 
 
 # ---------------------------------------------------------------------------

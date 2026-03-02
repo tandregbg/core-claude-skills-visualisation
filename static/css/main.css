@@ -73,10 +73,8 @@
     letter-spacing: 0.03em;
 }
 
-.project-sonetel { background: var(--cs-project-sonetel-bg); color: var(--cs-project-sonetel-text); }
-.project-t1k { background: var(--cs-project-t1k-bg); color: var(--cs-project-t1k-text); }
+/* Project-specific badge colors are generated dynamically via base.html */
 .project-personal { background: var(--cs-project-personal-bg); color: var(--cs-project-personal-text); }
-.project-tajmad { background: var(--cs-project-tajmad-bg); color: var(--cs-project-tajmad-text); }
 
 /* === PRIORITY BADGES === */
 

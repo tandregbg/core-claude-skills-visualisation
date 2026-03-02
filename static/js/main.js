@@ -7,13 +7,17 @@ let includePrivate = false;
 let autoRefreshInterval = null;
 const AUTO_REFRESH_MS = 60000;
 
-// Project colors for charts
-const PROJECT_COLORS = {
-    sonetel: { bg: '#dbeafe', text: '#1e40af', chart: '#3b82f6' },
-    t1k:     { bg: '#dcfce7', text: '#166534', chart: '#22c55e' },
-    personal:{ bg: '#f3f4f6', text: '#374151', chart: '#6b7280' },
-    tajmad:  { bg: '#ffedd5', text: '#9a3412', chart: '#f97316' },
-};
+// Project color palette -- assigned dynamically to projects from _tasks.yaml
+const PROJECT_COLOR_PALETTE = [
+    { bg: '#dbeafe', text: '#1e40af', chart: '#3b82f6' },
+    { bg: '#dcfce7', text: '#166534', chart: '#22c55e' },
+    { bg: '#ffedd5', text: '#9a3412', chart: '#f97316' },
+    { bg: '#fef3c7', text: '#92400e', chart: '#f59e0b' },
+    { bg: '#ede9fe', text: '#5b21b6', chart: '#8b5cf6' },
+    { bg: '#fce7f3', text: '#9d174d', chart: '#ec4899' },
+];
+const PROJECT_PERSONAL_COLOR = { bg: '#f3f4f6', text: '#374151', chart: '#6b7280' };
+const PROJECT_COLORS = {};  // Populated dynamically in initFolderSelector
 
 const PRIORITY_COLORS = {
     P0: '#ef4444',
@@ -42,6 +46,9 @@ async function initFolderSelector() {
         const res = await fetch('/api/projects');
         const projects = await res.json();
 
+        let colorIdx = 0;
+        const cssRules = [];
+
         for (const [name, cfg] of Object.entries(projects)) {
             const opt = document.createElement('option');
             opt.value = name;
@@ -50,6 +57,22 @@ async function initFolderSelector() {
                 opt.textContent += ' (private)';
             }
             select.appendChild(opt);
+
+            // Assign color from palette
+            const color = (name === 'personal')
+                ? PROJECT_PERSONAL_COLOR
+                : PROJECT_COLOR_PALETTE[colorIdx++ % PROJECT_COLOR_PALETTE.length];
+            PROJECT_COLORS[name] = color;
+
+            // Generate CSS for project badge
+            cssRules.push(`.project-${name} { background: ${color.bg}; color: ${color.text}; }`);
+        }
+
+        // Inject dynamic project CSS
+        if (cssRules.length > 0) {
+            const style = document.createElement('style');
+            style.textContent = cssRules.join('\n');
+            document.head.appendChild(style);
         }
     } catch (err) {
         console.error('Failed to load projects:', err);
@@ -167,6 +190,6 @@ function escapeHtml(text) {
 }
 
 function getProjectColor(project, type) {
-    const colors = PROJECT_COLORS[project] || PROJECT_COLORS.personal;
+    const colors = PROJECT_COLORS[project] || PROJECT_PERSONAL_COLOR;
     return colors[type || 'chart'];
 }

@@ -64,7 +64,7 @@ Requires [Claude Code](https://docs.anthropic.com/en/docs/claude-code).
 
 ```bash
 # Clone the repo
-git clone https://github.com/tandregbg/core-claude-skills.git core-skills
+git clone <core-skills-repo-url> core-skills
 
 # Create the bootstrap symlink
 mkdir -p ~/.claude/skills
@@ -79,14 +79,14 @@ core-skills expects an Obsidian vault with project folders. The `_tasks.yaml` fi
 
 ```yaml
 projects:
-  sonetel:
-    vault: sonetel/
+  acme:
+    vault: acme/
     shared_view: true
-  t1k:
-    vault: t1k-projects/
+  side-project:
+    vault: side-project/
     shared_view: true
   personal:
-    vault: "=privat/"
+    vault: personal/
     shared_view: false
 ```
 
@@ -99,7 +99,7 @@ After installing core-skills, use these commands in Claude Code from within a va
 ```
 /ops [paste meeting transcript]      Process a meeting into structured summary
 /transcript [paste recording]        Summarize a call or voice recording
-/preparation david                   Create meeting prep from contact history
+/preparation jane                    Create meeting prep from contact history
 /tasks add "Fix login bug"           Add a task manually
 /tasks done 5                        Mark task #5 as completed
 /daily-dashboard                     Generate daily overview with tasks

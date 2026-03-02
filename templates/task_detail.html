@@ -54,7 +54,7 @@
         let sourceHtml = '';
         if (t.source && t.source.file) {
             const obsidianFile = t.source.file.replace(/\.md$/, '');
-            const obsidianLink = `obsidian://open?vault=Tomas&file=${encodeURIComponent(obsidianFile)}`;
+            const obsidianLink = `obsidian://open?vault=${encodeURIComponent('{{ vault_name }}')}&file=${encodeURIComponent(obsidianFile)}`;
             sourceHtml = `
                 <div class="detail-field">
                     <span class="detail-label">Source</span>
