@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.2.1] - 2026-03-04
+
+### Fixed
+- **Insights deduplication:** `scan_insights()` now tracks real paths to prevent scanning the same directory tree twice (e.g., `=privat/` was scanned both as a project folder from `_tasks.yaml` and as a `=*/` contact folder, causing all insights to appear doubled)
+
 ## [0.1.0] - 2026-03-02
 
 Initial release.
