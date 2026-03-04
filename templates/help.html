@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block title %}Help -- core-skills{% endblock %}
+{% block breadcrumb %}Help{% endblock %}
+
+{% block head %}
+<style>.sidebar-controls { display: none !important; }</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-title-row">
+    <h1 class="page-title">Help</h1>
+</div>
+
+<div class="help-tabs">
+    <button class="help-tab active" data-tab="core_skills">Core Skills</button>
+    <button class="help-tab" data-tab="visualisation">Visualisation</button>
+    <button class="help-tab" data-tab="changelog">Changelog</button>
+</div>
+
+<div class="card help-content">
+    <div class="help-panel active" id="tab-core_skills">
+        <div class="help-loading">Loading...</div>
+    </div>
+    <div class="help-panel" id="tab-visualisation">
+        <div class="help-loading">Loading...</div>
+    </div>
+    <div class="help-panel" id="tab-changelog">
+        <div class="help-loading">Loading...</div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+    const tabs = document.querySelectorAll('.help-tab');
+    const panels = document.querySelectorAll('.help-panel');
+    let loaded = false;
+
+    tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            tabs.forEach(t => t.classList.remove('active'));
+            panels.forEach(p => p.classList.remove('active'));
+            tab.classList.add('active');
+            document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
+        });
+    });
+
+    fetch('/api/help')
+        .then(r => r.json())
+        .then(data => {
+            for (const [key, html] of Object.entries(data)) {
+                const panel = document.getElementById('tab-' + key);
+                if (panel) panel.innerHTML = '<div class="markdown-body">' + html + '</div>';
+            }
+            loaded = true;
+        })
+        .catch(() => {
+            panels.forEach(p => { p.innerHTML = '<p class="empty-state">Failed to load help content.</p>'; });
+        });
+})();
+</script>
+{% endblock %}

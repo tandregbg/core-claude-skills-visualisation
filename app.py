@@ -11,9 +11,20 @@ import config
 from parsers import tasks as task_parser
 from parsers import history as history_parser
 from parsers import activity as activity_parser
+from parsers import insights as insights_parser
 
 app = Flask(__name__)
 app.json.ensure_ascii = False
+
+# Cache-busting: use app start time as version query param for static files
+_static_version = int(time.time())
+
+@app.context_processor
+def inject_version():
+    return {'v': _static_version}
+
+# Load persistent settings on startup
+_settings = config.load_settings()
 
 # ---------------------------------------------------------------------------
 # Cache layer -- mtime-based invalidation
@@ -23,6 +34,7 @@ _cache = {
     'tasks': {'data': None, 'projects': None, 'mtime': 0},
     'history': {'data': None, 'mtime': 0},
     'activity': {'data': None, 'scan_time': 0},
+    'insights': {'data': None, 'scan_time': 0},
 }
 
 
@@ -34,12 +46,34 @@ def _file_mtime(path):
 
 
 def _get_tasks_cached(today=None):
-    """Return (projects, enriched_tasks) with mtime-based cache."""
+    """Return (projects, enriched_tasks) with mtime-based cache.
+
+    Projects are merged from _tasks.yaml registry + auto-discovered
+    ops-structured folders in the vault.  Settings project overrides
+    (enabled, shared_view) are applied on top.
+    """
     current_mtime = _file_mtime(config.TASKS_FILE)
     if _cache['tasks']['data'] is not None and current_mtime == _cache['tasks']['mtime']:
         return _cache['tasks']['projects'], _cache['tasks']['data']
 
     projects, raw_tasks, _ = task_parser.load_tasks_file(config.TASKS_FILE)
+
+    # Auto-discover ops-structured folders and merge with registered projects
+    scan_depth = _settings.get('scan_depth', 2)
+    projects = activity_parser.discover_projects(config.VAULT_PATH, projects, scan_depth=scan_depth)
+
+    # Apply settings overrides (enabled/shared_view) on top of discovered projects
+    settings_projects = _settings.get('projects', {})
+    for name, cfg in projects.items():
+        if name in settings_projects:
+            sp = settings_projects[name]
+            if 'enabled' in sp:
+                cfg['enabled'] = sp['enabled']
+            if 'shared_view' in sp:
+                cfg['shared_view'] = sp['shared_view']
+        # Default: enabled if not explicitly set
+        cfg.setdefault('enabled', True)
+
     enriched = [task_parser.enrich_task(t, today or date.today()) for t in raw_tasks]
     _cache['tasks']['projects'] = projects
     _cache['tasks']['data'] = enriched
@@ -71,6 +105,18 @@ def _get_activity_cached(projects):
     return data
 
 
+def _get_insights_cached(projects):
+    """Return insights from all _insights.yaml files with time-based cache."""
+    now = time.time()
+    if _cache['insights']['data'] is not None and (now - _cache['insights']['scan_time']) < config.CACHE_TTL:
+        return _cache['insights']['data']
+
+    data = insights_parser.scan_insights(config.VAULT_PATH, projects, config.VAULT_NAME)
+    _cache['insights']['data'] = data
+    _cache['insights']['scan_time'] = now
+    return data
+
+
 def _invalidate_cache():
     """Force cache invalidation."""
     _cache['tasks']['mtime'] = 0
@@ -79,6 +125,8 @@ def _invalidate_cache():
     _cache['history']['data'] = None
     _cache['activity']['scan_time'] = 0
     _cache['activity']['data'] = None
+    _cache['insights']['scan_time'] = 0
+    _cache['insights']['data'] = None
 
 
 # ---------------------------------------------------------------------------
@@ -163,6 +211,11 @@ def activity_page():
     return render_template('activity.html')
 
 
+@app.route('/insights')
+def insights_page():
+    return render_template('insights.html')
+
+
 @app.route('/recent')
 def recent_page():
     return render_template('recent.html')
@@ -173,15 +226,141 @@ def task_detail(task_id):
     return render_template('task_detail.html', task_id=task_id, vault_name=config.VAULT_NAME)
 
 
+@app.route('/help')
+def help_page():
+    return render_template('help.html')
+
+
+@app.route('/settings')
+def settings_page():
+    return render_template('settings.html')
+
+
+# ---------------------------------------------------------------------------
+# API routes -- settings
+# ---------------------------------------------------------------------------
+
+def _count_project_files(vault_path, folder_path):
+    """Count .md files with YYMMDD- prefix in a project folder."""
+    import re
+    full = os.path.join(vault_path, folder_path)
+    if not os.path.isdir(full):
+        return 0
+    count = 0
+    for root, dirs, files in os.walk(full):
+        dirs[:] = [d for d in dirs if not d.startswith('.')]
+        for f in files:
+            if f.endswith('.md') and re.match(r'^\d{6}-', f):
+                count += 1
+    return count
+
+
+@app.route('/api/settings', methods=['GET'])
+def api_settings_get():
+    """Return current settings merged with live project discovery."""
+    global _settings
+    _settings = config.load_settings()
+
+    # Run discovery to get current project list
+    projects_reg, _, _ = task_parser.load_tasks_file(config.TASKS_FILE)
+    scan_depth = _settings.get('scan_depth', 2)
+    all_projects = activity_parser.discover_projects(
+        config.VAULT_PATH, projects_reg, scan_depth=scan_depth
+    )
+
+    settings_projects = _settings.get('projects', {})
+    result_projects = {}
+
+    for name, cfg in all_projects.items():
+        sp = settings_projects.get(name, {})
+        source = 'discovered' if cfg.get('discovered') else 'registered'
+        result_projects[name] = {
+            'enabled': sp.get('enabled', True),
+            'shared_view': sp.get('shared_view', cfg.get('shared_view', True)),
+            'source': source,
+            'vault': cfg.get('vault', ''),
+            'file_count': _count_project_files(config.VAULT_PATH, cfg.get('vault', '')),
+        }
+
+    return jsonify({
+        'vault_path': _settings.get('vault_path', config.VAULT_PATH),
+        'vault_name': _settings.get('vault_name', config.VAULT_NAME),
+        'scan_depth': _settings.get('scan_depth', 2),
+        'projects': result_projects,
+    })
+
+
+@app.route('/api/settings', methods=['POST'])
+def api_settings_post():
+    """Save settings (partial update -- only sent fields are changed)."""
+    global _settings
+    data = request.get_json(force=True)
+
+    if 'vault_name' in data:
+        _settings['vault_name'] = data['vault_name']
+    if 'vault_path' in data:
+        _settings['vault_path'] = data['vault_path']
+    if 'scan_depth' in data:
+        _settings['scan_depth'] = int(data['scan_depth'])
+
+    if 'projects' in data:
+        if 'projects' not in _settings:
+            _settings['projects'] = {}
+        for proj_name, proj_updates in data['projects'].items():
+            if proj_name not in _settings['projects']:
+                _settings['projects'][proj_name] = {}
+            _settings['projects'][proj_name].update(proj_updates)
+
+    config.save_settings(_settings)
+    _invalidate_cache()
+    return jsonify({'status': 'ok'})
+
+
+@app.route('/api/settings/rescan', methods=['POST'])
+def api_settings_rescan():
+    """Force re-discovery and return updated project list."""
+    global _settings
+    _invalidate_cache()
+
+    projects_reg, _, _ = task_parser.load_tasks_file(config.TASKS_FILE)
+    scan_depth = _settings.get('scan_depth', 2)
+    all_projects = activity_parser.discover_projects(
+        config.VAULT_PATH, projects_reg, scan_depth=scan_depth
+    )
+
+    settings_projects = _settings.get('projects', {})
+    result_projects = {}
+
+    for name, cfg in all_projects.items():
+        sp = settings_projects.get(name, {})
+        source = 'discovered' if cfg.get('discovered') else 'registered'
+        # Newly discovered projects not yet in settings default to enabled
+        enabled = sp.get('enabled', True)
+        result_projects[name] = {
+            'enabled': enabled,
+            'shared_view': sp.get('shared_view', cfg.get('shared_view', True)),
+            'source': source,
+            'vault': cfg.get('vault', ''),
+            'file_count': _count_project_files(config.VAULT_PATH, cfg.get('vault', '')),
+        }
+
+    return jsonify({
+        'projects': result_projects,
+        'scan_depth': scan_depth,
+        'total_discovered': sum(1 for p in result_projects.values() if p['source'] == 'discovered'),
+    })
+
+
 # ---------------------------------------------------------------------------
 # API routes
 # ---------------------------------------------------------------------------
 
 @app.route('/api/projects')
 def api_projects():
-    """Return project registry from _tasks.yaml."""
+    """Return enabled projects (filtered by settings)."""
     projects, _ = _get_tasks_cached()
-    return jsonify(projects)
+    enabled = {k: v for k, v in projects.items() if v.get('enabled', True)}
+    return jsonify(enabled)
 
 
 @app.route('/api/tasks')
@@ -390,11 +569,92 @@ def api_history():
     return jsonify(result)
 
 
+@app.route('/api/insights')
+def api_insights():
+    """Return insights filtered by project, type, and status."""
+    project = request.args.get('project', 'all')
+    insight_type = request.args.get('type', 'all')
+    status = request.args.get('status', 'active')
+
+    projects, _ = _get_tasks_cached()
+    all_insights = _get_insights_cached(projects)
+    filtered = insights_parser.filter_insights(all_insights, project, insight_type, status)
+
+    type_counts = insights_parser.aggregate_type_counts(filtered)
+    monthly = insights_parser.aggregate_monthly_counts(filtered)
+
+    # Count this month
+    today = date.today()
+    this_month = today.strftime('%Y-%m')
+    this_month_count = sum(
+        1 for i in filtered
+        if i.get('date_obj') and i['date_obj'].strftime('%Y-%m') == this_month
+    )
+
+    return jsonify({
+        'insights': [insights_parser.serialize_insight(i) for i in filtered],
+        'type_counts': type_counts,
+        'monthly': monthly,
+        'total': len(filtered),
+        'this_month': this_month_count,
+    })
+
+
 @app.route('/api/refresh', methods=['POST'])
 def api_refresh():
     """Force cache invalidation and re-read all data."""
     _invalidate_cache()
     return jsonify({'status': 'ok', 'message': 'Cache invalidated'})
+
+
+def _find_core_skills_root():
+    """Discover core-skills repo root by following the transcript skill symlink."""
+    link = os.path.expanduser('~/.claude/skills/transcript')
+    if os.path.islink(link):
+        target = os.path.realpath(link)
+        # target is .../core-skills/skills/transcript -> go up 2 levels
+        return os.path.dirname(os.path.dirname(target))
+    return None
+
+
+def _read_markdown_file(path):
+    """Read a markdown file and return (content, mtime) or (None, None)."""
+    if path and os.path.isfile(path):
+        with open(path, 'r', encoding='utf-8') as f:
+            return f.read(), os.path.getmtime(path)
+    return None, None
+
+
+@app.route('/api/help')
+def api_help():
+    """Return rendered markdown for help tabs."""
+    app_root = os.path.dirname(os.path.abspath(__file__))
+    cs_root = _find_core_skills_root()
+
+    tabs = {}
+
+    # Tab 1: core-skills README
+    content, _ = _read_markdown_file(os.path.join(cs_root, 'README.md') if cs_root else None)
+    if content:
+        tabs['core_skills'] = md.markdown(content, extensions=['tables', 'fenced_code'])
+
+    # Tab 2: visualisation README
+    content, _ = _read_markdown_file(os.path.join(app_root, 'README.md'))
+    if content:
+        tabs['visualisation'] = md.markdown(content, extensions=['tables', 'fenced_code'])
+
+    # Tab 3: changelogs (both merged, core-skills first)
+    parts = []
+    content, _ = _read_markdown_file(os.path.join(cs_root, 'CHANGELOG.md') if cs_root else None)
+    if content:
+        parts.append('# core-skills changelog\n\n' + content.lstrip('# Changelog\n').lstrip())
+    content, _ = _read_markdown_file(os.path.join(app_root, 'CHANGELOG.md'))
+    if content:
+        parts.append('# core-skills-visualisation changelog\n\n' + content.lstrip('# Changelog\n').lstrip())
+    if parts:
+        tabs['changelog'] = md.markdown('\n\n---\n\n'.join(parts), extensions=['tables', 'fenced_code'])
+
+    return jsonify(tabs)
 
 
 # ---------------------------------------------------------------------------
@@ -405,4 +665,4 @@ if __name__ == '__main__':
     print(f"Vault path: {config.VAULT_PATH}")
     print(f"Tasks file: {config.TASKS_FILE}")
     print(f"Starting on port {config.FLASK_PORT}")
-    app.run(host='127.0.0.1', port=config.FLASK_PORT, debug=True)
+    app.run(host='0.0.0.0', port=config.FLASK_PORT, debug=True)

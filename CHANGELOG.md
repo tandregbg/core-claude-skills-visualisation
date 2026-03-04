@@ -1,6 +1,10 @@
 # Changelog
 
-## [0.2.1] - 2026-03-04
+## [0.2.2] - 2026-03-04
+
+### Added
+- **Help page** (`/help`): Tabbed view rendering core-skills README, visualisation README, and merged changelogs directly from markdown files on disk. No content duplication -- reads live from source repos.
+- Help nav item in sidebar
 
 ### Fixed
 - **Insights deduplication:** `scan_insights()` now tracks real paths to prevent scanning the same directory tree twice (e.g., `=privat/` was scanned both as a project folder from `_tasks.yaml` and as a `=*/` contact folder, causing all insights to appear doubled)

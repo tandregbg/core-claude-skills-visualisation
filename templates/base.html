@@ -9,9 +9,9 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-    <link rel="stylesheet" href="{{ url_for('static', filename='tokens.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='layout.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='tokens.css') }}?v={{ v }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='layout.css') }}?v={{ v }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}?v={{ v }}">
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
     {% block head %}{% endblock %}
@@ -19,12 +19,15 @@
 <body>
     <div class="app-layout">
         <!-- Sidebar -->
-        <nav class="sidebar">
+        <nav class="sidebar" id="sidebar">
             <div class="sidebar-brand">
                 <h1>
                     <span class="logo">cs</span>
                     <span>core-skills</span>
                 </h1>
+                <button class="sidebar-collapse-btn" id="sidebar-toggle" title="Collapse sidebar">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 12L6 8l4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
             </div>
 
             <div class="nav-section">
@@ -44,6 +47,18 @@
                 <a href="/activity" class="nav-item" data-page="activity">
                     <span class="dot"></span>
                     <span>Activity</span>
+                </a>
+                <a href="/insights" class="nav-item" data-page="insights">
+                    <span class="dot"></span>
+                    <span>Insights</span>
+                </a>
+                <a href="/settings" class="nav-item" data-page="settings">
+                    <span class="dot"></span>
+                    <span>Settings</span>
+                </a>
+                <a href="/help" class="nav-item" data-page="help">
+                    <span class="dot"></span>
+                    <span>Help</span>
                 </a>
             </div>
 
@@ -85,7 +100,7 @@
         </main>
     </div>
 
-    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}?v={{ v }}"></script>
     {% block scripts %}{% endblock %}
 </body>
 </html>
