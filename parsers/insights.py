@@ -20,7 +20,7 @@ def parse_insight_date(date_str):
 
 
 def scan_insights(vault_path, projects, vault_name=None):
-    """Walk project folders and =*/ contact folders looking for _insights.yaml files.
+    """Walk project folders, _contacts/*/ and _projects/*/ folders looking for _insights.yaml files.
 
     Returns list of insight dicts, each enriched with:
     - 'project': which project folder it came from
@@ -35,7 +35,7 @@ def scan_insights(vault_path, projects, vault_name=None):
     all_insights = []
     seen_yaml_paths = set()
 
-    # Collect folders to scan: project folders + =*/ contact folders
+    # Collect folders to scan: project folders + _contacts/ + _projects/ subfolders
     folders_to_scan = []
 
     for proj_name, proj_config in projects.items():
@@ -43,22 +43,28 @@ def scan_insights(vault_path, projects, vault_name=None):
         if folder:
             folders_to_scan.append((proj_name, folder))
 
-    # Also scan =*/ contact folders at vault root
+    # Also scan _contacts/*/ and _projects/*/ folders at vault root
     # Track real paths to avoid scanning the same directory tree twice
     scanned_realpaths = set()
     for _, folder_path in folders_to_scan:
         rp = os.path.realpath(os.path.join(vault_path, folder_path))
         scanned_realpaths.add(rp)
 
-    try:
-        for entry in os.listdir(vault_path):
-            if entry.startswith('=') and os.path.isdir(os.path.join(vault_path, entry)):
-                rp = os.path.realpath(os.path.join(vault_path, entry))
-                if rp not in scanned_realpaths:
-                    folders_to_scan.append((entry.lstrip('='), entry))
-                    scanned_realpaths.add(rp)
-    except OSError:
-        pass
+    for container in ('_contacts', '_projects'):
+        container_path = os.path.join(vault_path, container)
+        if not os.path.isdir(container_path):
+            continue
+        try:
+            for entry in os.listdir(container_path):
+                entry_path = os.path.join(container_path, entry)
+                if os.path.isdir(entry_path):
+                    rp = os.path.realpath(entry_path)
+                    if rp not in scanned_realpaths:
+                        rel_path = os.path.join(container, entry)
+                        folders_to_scan.append((entry, rel_path))
+                        scanned_realpaths.add(rp)
+        except OSError:
+            pass
 
     for proj_name, folder_path in folders_to_scan:
         full_folder = os.path.join(vault_path, folder_path)

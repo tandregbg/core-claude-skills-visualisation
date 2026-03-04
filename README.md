@@ -69,7 +69,7 @@ The Insights page aggregates knowledge extracted from meetings and conversations
 
 ### How data flows
 
-`_insights.yaml` files are per-folder (placed alongside `CHANGELOG.md`), not a single file at vault root. The parser (`parsers/insights.py`) scans across all project folders and `=*/` contact folders to aggregate them.
+`_insights.yaml` files are per-folder (placed alongside `CHANGELOG.md`), not a single file at vault root. The parser (`parsers/insights.py`) scans across all project folders, `_contacts/*/` and `_projects/*/` folders to aggregate them.
 
 ```
 Vault

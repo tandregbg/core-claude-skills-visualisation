@@ -37,6 +37,122 @@ TYPE_KEYWORDS = [
 ]
 
 
+OPS_INDICATORS = [
+    'CLAUDE.md',
+    'CHANGELOG.md',
+    'README.md',
+    'task-priority-matrix.md',
+]
+
+OPS_DIRS = [
+    'meetings',
+    'ops',
+]
+
+# Folders to skip during auto-discovery (system, templates, non-project)
+SKIP_FOLDERS = {
+    '.obsidian', '.trash', 'clones',
+}
+
+
+def discover_projects(vault_path, registered_projects=None, scan_depth=2):
+    """Auto-discover project folders by scanning for ops structure indicators.
+
+    scan_depth controls how deep to look:
+      1 = top-level vault folders only
+      2 = top-level + one level of nesting (default)
+
+    Returns dict of {name: {vault: path, shared_view: bool, discovered: True}}
+    merged with registered_projects (which take precedence).
+    """
+    if registered_projects is None:
+        registered_projects = {}
+
+    # Build set of vault paths already registered
+    registered_paths = set()
+    for cfg in registered_projects.values():
+        registered_paths.add(cfg.get('vault', '').rstrip('/'))
+
+    discovered = {}
+
+    def _check_folder(folder_path, name):
+        """Check if a folder has ops structure (>= 2 indicators)."""
+        full = os.path.join(vault_path, folder_path)
+        if not os.path.isdir(full):
+            return
+
+        score = 0
+        for indicator in OPS_INDICATORS:
+            if os.path.isfile(os.path.join(full, indicator)):
+                score += 1
+        for d in OPS_DIRS:
+            if os.path.isdir(os.path.join(full, d)):
+                score += 1
+
+        if score >= 2 and folder_path.rstrip('/') not in registered_paths:
+            discovered[name] = {
+                'vault': folder_path if folder_path.endswith('/') else folder_path + '/',
+                'shared_view': True,
+                'discovered': True,
+            }
+
+    try:
+        entries = os.listdir(vault_path)
+    except OSError:
+        return dict(registered_projects)
+
+    for entry in sorted(entries):
+        if entry.startswith('.') or entry.startswith('!') or entry in SKIP_FOLDERS:
+            continue
+
+        full_entry = os.path.join(vault_path, entry)
+        if not os.path.isdir(full_entry):
+            continue
+
+        # Scan inside _projects/ and _contacts/ as container folders
+        if entry in ('_projects', '_contacts', '_private'):
+            try:
+                sub_entries = os.listdir(full_entry)
+            except OSError:
+                continue
+            for sub in sorted(sub_entries):
+                if sub.startswith('.'):
+                    continue
+                sub_path = os.path.join(entry, sub)
+                if os.path.isdir(os.path.join(vault_path, sub_path)):
+                    _check_folder(sub_path, sub)
+            continue
+
+        # Skip other _ prefixed folders (system files like _tasks.yaml etc.)
+        if entry.startswith('_'):
+            continue
+
+        # Check top-level folder
+        _check_folder(entry, entry)
+
+        # Check one level deeper for container folders when scan_depth >= 2
+        if scan_depth >= 2:
+            try:
+                sub_entries = os.listdir(full_entry)
+            except OSError:
+                continue
+
+            for sub in sorted(sub_entries):
+                if sub.startswith(('.', '_', '!')):
+                    continue
+                sub_path = os.path.join(entry, sub)
+                if os.path.isdir(os.path.join(vault_path, sub_path)):
+                    _check_folder(sub_path, sub)
+
+    # Merge: registered projects first, then discovered
+    merged = dict(registered_projects)
+    for name, cfg in discovered.items():
+        if name not in merged:
+            merged[name] = cfg
+
+    return merged
+
+
 def classify_domain(relative_path):
     """Classify a file's domain based on its relative path within the vault folder."""
     for pattern, domain in DOMAIN_PATTERNS:

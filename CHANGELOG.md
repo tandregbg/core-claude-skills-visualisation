@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.3] - 2026-03-04
+
+### Changed
+- **Vault folder structure support:** Updated parsers for new `_contacts/`, `_projects/`, `_private/` convention
+  - `parsers/insights.py`: Scans `_contacts/*/` and `_projects/*/` instead of `=*/` folders
+  - `parsers/activity.py`: Project discovery handles `_projects/`, `_contacts/`, `_private/` as container folders; removed `_templates` from skip list
+
 ## [0.2.2] - 2026-03-04
 
 ### Added
