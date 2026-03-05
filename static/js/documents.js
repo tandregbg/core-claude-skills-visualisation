@@ -3,12 +3,23 @@
  */
 
 let selectedFilePath = null;
-let selectedDay = null;
+let selectedDay = 'today'; // default to today
 let cachedData = null;
 let activeProjects = new Set(); // empty = all
 let activeTypes = new Set();    // empty = all
 
+function getTodayKey() {
+    return new Date().toISOString().slice(0, 10);
+}
+
+function getRelativeDayKey(offset) {
+    const d = new Date();
+    d.setDate(d.getDate() + offset);
+    return d.toISOString().slice(0, 10);
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+    selectedDay = getTodayKey();
     loadDocuments();
     document.getElementById('days-select').addEventListener('change', loadDocuments);
     window.addEventListener('folder-change', loadDocuments);
@@ -158,18 +169,38 @@ function renderDayBadges(rawData) {
     const countEl = document.getElementById('file-count');
     const filtered = getFilteredData();
     const days = filtered.days;
-    const sortedDays = Object.keys(days).sort();
 
     countEl.textContent = `${filtered.total} documents`;
 
-    if (sortedDays.length === 0) {
-        container.innerHTML = '';
-        return;
-    }
+    // Always show Yesterday, Today, Tomorrow as fixed navigation
+    const yesterdayKey = getRelativeDayKey(-1);
+    const todayKey = getTodayKey();
+    const tomorrowKey = getRelativeDayKey(1);
+    const fixedDays = [
+        { key: yesterdayKey, label: 'Yesterday', type: 'past' },
+        { key: todayKey, label: 'Today', type: 'today' },
+        { key: tomorrowKey, label: 'Tomorrow', type: 'tomorrow' },
+    ];
+
+    // Collect other days that have files but aren't in the fixed set
+    const fixedKeys = new Set([yesterdayKey, todayKey, tomorrowKey]);
+    const otherDays = Object.keys(days)
+        .filter(d => !fixedKeys.has(d))
+        .sort()
+        .reverse();
 
     const allBadge = `<button class="day-badge day-badge-all${selectedDay === null ? ' active' : ''}" onclick="filterByDay(null)">All <span class="day-badge-count">${filtered.total}</span></button>`;
 
-    const badges = sortedDays.map(dayKey => {
+    const fixedBadges = fixedDays.map(({ key, label, type }) => {
+        const count = (days[key] || []).length;
+        const isActive = selectedDay === key;
+        return `<button class="day-badge day-badge-${type}${isActive ? ' active' : ''}" onclick="filterByDay('${key}')" data-day="${key}">
+            <span class="day-badge-label">${label}</span>
+            <span class="day-badge-count">${count}</span>
+        </button>`;
+    }).join('');
+
+    const otherBadges = otherDays.map(dayKey => {
         const files = days[dayKey];
         const label = getDayLabel(dayKey);
         const type = getDayType(dayKey);
@@ -183,7 +214,7 @@ function renderDayBadges(rawData) {
         </button>`;
     }).join('');
 
-    container.innerHTML = allBadge + badges;
+    container.innerHTML = allBadge + fixedBadges + (otherDays.length > 0 ? '<span class="badge-separator"></span>' + otherBadges : '');
 }
 
 window.filterByDay = function(dayKey) {
@@ -218,7 +249,11 @@ function renderFileList(rawData, filterDay) {
     }
 
     if (sortedDays.length === 0) {
-        container.innerHTML = '<p class="empty-state">No documents found</p>';
+        const label = filterDay ? getDayLabel(filterDay) : '';
+        const msg = filterDay
+            ? `No documents for ${label} (${filterDay})`
+            : 'No documents found';
+        container.innerHTML = `<p class="empty-state">${msg}</p>`;
         resetPreview();
         return;
     }
