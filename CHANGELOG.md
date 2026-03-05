@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.4.3] - 2026-03-05
+
+### Added
+- **Dashboard files in Documents page:** `_Dashboard*.md` files from the vault root now appear in the recent files list on the Documents page, viewable like any other file.
+- **`scan_dashboard_files()` in `parsers/activity.py`:** Scans vault root for `_Dashboard*.md` files modified within the given time window.
+
+### Changed
+- **Dashboard page layout:** Moved tasks panel from right-side column to below the document preview (2-column layout with content-stack), matching the Projects and Documents pages.
+- **Dashboard task table:** Replaced grouped card-style task list with inline table including done button, priority badges, status, due date, and tags columns.
+
+## [0.4.2] - 2026-03-05
+
+### Fixed
+- **Ollama API:** Switched from OpenAI-compatible `/v1/chat/completions` to native `/api/chat` with `think: false` and `stream: false`. Avoids reasoning token bloat and timeout issues.
+- **Default model:** Changed from `qwen3.5:35b` (cold start timeout on 24GB model swap) to `qwen3:30b` (already loaded, 178 tok/s).
+
 ## [0.4.1] - 2026-03-05
 
 ### Added

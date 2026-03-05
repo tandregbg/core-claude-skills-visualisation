@@ -357,6 +357,63 @@ def scan_ops_files(vault_path, projects, vault_name=None, days=30):
     return files
 
 
+def scan_dashboard_files(vault_path, vault_name=None, days=30):
+    """Scan vault root for _Dashboard*.md files modified within the given days.
+
+    Returns list of file entries suitable for the recent files list.
+    """
+    if vault_name is None:
+        vault_name = os.path.basename(vault_path)
+
+    cutoff = datetime.now().timestamp() - (days * 86400)
+    files = []
+
+    try:
+        for fname in os.listdir(vault_path):
+            if not fname.startswith('_Dashboard') or not fname.endswith('.md'):
+                continue
+            full_path = os.path.join(vault_path, fname)
+            if not os.path.isfile(full_path):
+                continue
+            try:
+                stat = os.stat(full_path)
+                mtime = stat.st_mtime
+                size = stat.st_size
+            except OSError:
+                continue
+            if mtime < cutoff:
+                continue
+
+            file_date = datetime.fromtimestamp(mtime).date()
+            obsidian_file = fname[:-3] if fname.endswith('.md') else fname
+            obsidian_link = f"obsidian://open?vault={quote(vault_name)}&file={quote(obsidian_file)}"
+
+            # Label: _Dashboard.md -> "Dashboard", _Dashboard-sonetel.md -> "Dashboard (Sonetel)"
+            if fname == '_Dashboard.md':
+                label = 'Dashboard'
+            else:
+                org = fname.replace('_Dashboard-', '').replace('.md', '').title()
+                label = f'Dashboard ({org})'
+
+            files.append({
+                'filename': fname,
+                'relative_path': fname,
+                'folder_relative_path': fname,
+                'date': file_date,
+                'domain': 'ops',
+                'file_type': 'dashboard',
+                'obsidian_link': obsidian_link,
+                'size': size,
+                'mtime': mtime,
+                'project': 'dashboard',
+                'ops_context': label,
+            })
+    except OSError:
+        pass
+
+    return files
+
+
 def scan_all_folders(vault_path, projects, vault_name=None):
     """Scan all project folders for dated files.
 

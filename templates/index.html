@@ -13,8 +13,8 @@
     <div class="day-badges" id="dashboard-project-badges"></div>
 </div>
 
-<!-- Four-column layout: projects | documents | preview | tasks -->
-<div class="dashboard-layout">
+<!-- Two-column layout: documents | preview + tasks stacked -->
+<div class="documents-layout documents-layout-2col">
     <!-- Left: document list -->
     <div class="dashboard-col dashboard-col-docs">
         <div class="dashboard-col-header" id="dashboard-docs-header">Documents</div>
@@ -23,21 +23,24 @@
         </div>
     </div>
 
-    <!-- Center: content preview -->
-    <div class="dashboard-col dashboard-col-preview">
-        <div class="dashboard-col-header dashboard-preview-header" id="dashboard-preview-header">
-            <span class="preview-placeholder">Select a file to preview</span>
+    <!-- Right: content + tasks stacked -->
+    <div class="content-stack">
+        <div class="recent-preview">
+            <div id="dashboard-preview-header" class="recent-preview-header">
+                <span class="preview-placeholder">Select a file to preview</span>
+            </div>
+            <div id="dashboard-preview-content" class="recent-preview-content prose">
+                <p class="preview-empty">Click a document to see its content</p>
+            </div>
         </div>
-        <div id="dashboard-preview-content" class="recent-preview-content prose">
-            <p class="preview-empty">Click a document to see its content</p>
-        </div>
-    </div>
 
-    <!-- Right: tasks -->
-    <div class="dashboard-col dashboard-col-tasks">
-        <div class="dashboard-col-header" id="dashboard-tasks-header">Tasks</div>
-        <div id="dashboard-tasks-content">
-            <p class="empty-state">Select a document to see related tasks</p>
+        <div class="card" id="dashboard-tasks-card">
+            <div class="card-header">
+                <span id="dashboard-tasks-header">Tasks</span>
+            </div>
+            <div id="dashboard-tasks-content">
+                <p class="empty-state">Select a document to see related tasks</p>
+            </div>
         </div>
     </div>
 </div>

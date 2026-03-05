@@ -904,35 +904,13 @@ a.task-panel-item:hover {
 
 /* === DASHBOARD (day overview) === */
 
-.dashboard-layout {
-    display: flex;
-    gap: var(--cs-spacing-xl);
-    height: calc(100vh - 200px);
-}
-
-.dashboard-col {
+.dashboard-col-docs {
     background: var(--cs-elevation-solid-0);
     border-radius: var(--cs-border-radius-xs);
     border: 1px solid var(--cs-elevation-solid-3);
     display: flex;
     flex-direction: column;
     overflow: hidden;
-}
-
-.dashboard-col-docs {
-    width: 320px;
-    min-width: 280px;
-    flex-shrink: 0;
-}
-
-.dashboard-col-preview {
-    flex: 1;
-}
-
-.dashboard-col-tasks {
-    width: 340px;
-    min-width: 300px;
-    flex-shrink: 0;
 }
 
 .dashboard-col-header {
@@ -944,23 +922,10 @@ a.task-panel-item:hover {
     flex-shrink: 0;
 }
 
-.dashboard-preview-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-}
-
-.dashboard-col-docs > div:last-child,
-.dashboard-col-tasks > div:last-child {
+.dashboard-col-docs > div:last-child {
     flex: 1;
     overflow-y: auto;
     padding: var(--cs-spacing-sm);
-}
-
-.dashboard-col-preview > div:last-child {
-    flex: 1;
-    overflow-y: auto;
-    padding: var(--cs-spacing-2xl);
 }
 
 .dashboard-overdue-days {

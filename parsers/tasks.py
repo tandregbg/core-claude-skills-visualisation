@@ -1,4 +1,8 @@
-"""Parse _tasks.yaml: projects registry, task filtering, grouping, overdue detection."""
+"""Parse _tasks.yaml: projects registry, task filtering, grouping, overdue detection.
+
+Supports both v1 (single central file with project: per task) and v2 (distributed
+per-folder files with context/scope fields).  scan_tasks() aggregates all files.
+"""
 
 import os
 import re
@@ -25,10 +29,162 @@ def load_tasks_file(tasks_path):
     with open(tasks_path, 'r', encoding='utf-8') as f:
         data = yaml.safe_load(f)
 
+    if not data:
+        return {}, [], 0
+
     projects = data.get('projects', {})
     tasks = data.get('tasks', []) or []
     next_id = data.get('next_id', 0)
     return projects, tasks, next_id
+
+
+def _derive_project_from_path(rel_path):
+    """Derive a project name from the relative path of a _tasks.yaml file.
+
+    Examples:
+        '_projects/sonetel' -> 'sonetel'
+        '_projects/sonetel/projects/sonetel-mobile-v3' -> 'sonetel-mobile-v3'
+        '_projects/t1k/keychron-gandalf' -> 'keychron-gandalf'
+        '_contacts/marcus-andersson_mustaschmilen' -> 'marcus-andersson_mustaschmilen'
+        '_private' -> 'personal'
+        '.' -> 'root'
+    """
+    if rel_path in ('.', ''):
+        return 'root'
+    if rel_path == '_private' or rel_path.startswith('_private/'):
+        return 'personal'
+    # Use the last path component as project name
+    return os.path.basename(rel_path)
+
+
+def scan_tasks(vault_path, projects, vault_name=None):
+    """Walk vault folders looking for _tasks.yaml files, aggregate all tasks.
+
+    Modeled on scan_insights().  Supports both v1 (has project: per task) and
+    v2 (has context/scope at file level).
+
+    Returns (projects_registry, all_tasks) where each task is enriched with:
+    - '_source_file': relative path to the _tasks.yaml
+    - '_project': derived project name
+    - '_display_id': 'context#id' for v2 files, '#id' for root
+    - 'project': set from file-level context for v2, kept from task for v1
+    """
+    if vault_name is None:
+        vault_name = os.path.basename(vault_path)
+
+    all_tasks = []
+    projects_registry = {}
+    seen_realpaths = set()
+
+    # 1. Load root _tasks.yaml -- extract projects registry + root tasks
+    root_tasks_path = os.path.join(vault_path, '_tasks.yaml')
+    if os.path.isfile(root_tasks_path):
+        rp = os.path.realpath(root_tasks_path)
+        seen_realpaths.add(rp)
+
+        try:
+            projects_reg, tasks, _ = load_tasks_file(root_tasks_path)
+            projects_registry.update(projects_reg)
+
+            for t in tasks:
+                t['_source_file'] = '_tasks.yaml'
+                t['_project'] = t.get('project', 'root')
+                t['_display_id'] = '#{}'.format(t.get('id', '?'))
+        except Exception:
+            tasks = []
+
+        all_tasks.extend(tasks)
+
+    # 2. Collect folders to scan
+    folders_to_scan = []
+
+    # From registered projects
+    for proj_name, proj_config in projects.items():
+        folder = proj_config.get('vault', '')
+        if folder:
+            folders_to_scan.append((proj_name, folder))
+
+    # Track already-queued realpaths to avoid dupes
+    queued_realpaths = set()
+    for _, folder_path in folders_to_scan:
+        rp = os.path.realpath(os.path.join(vault_path, folder_path))
+        queued_realpaths.add(rp)
+
+    # Auto-discover from _contacts/, _projects/, _private/
+    for container in ('_contacts', '_projects', '_private'):
+        container_path = os.path.join(vault_path, container)
+        if not os.path.isdir(container_path):
+            continue
+        if container == '_private':
+            # _private itself is a scan target
+            rp = os.path.realpath(container_path)
+            if rp not in queued_realpaths:
+                folders_to_scan.append(('personal', container))
+                queued_realpaths.add(rp)
+            continue
+        try:
+            for entry in os.listdir(container_path):
+                entry_path = os.path.join(container_path, entry)
+                if os.path.isdir(entry_path):
+                    rp = os.path.realpath(entry_path)
+                    if rp not in queued_realpaths:
+                        rel_path = os.path.join(container, entry)
+                        folders_to_scan.append((entry, rel_path))
+                        queued_realpaths.add(rp)
+        except OSError:
+            pass
+
+    # 3. Walk each folder for _tasks.yaml files
+    for proj_name, folder_path in folders_to_scan:
+        full_folder = os.path.join(vault_path, folder_path)
+        if not os.path.isdir(full_folder):
+            continue
+
+        for root, dirs, files in os.walk(full_folder):
+            dirs[:] = [d for d in dirs if not d.startswith('.')]
+
+            if '_tasks.yaml' not in files:
+                continue
+
+            yaml_path = os.path.join(root, '_tasks.yaml')
+            real = os.path.realpath(yaml_path)
+            if real in seen_realpaths:
+                continue
+            seen_realpaths.add(real)
+
+            rel_folder = os.path.relpath(root, vault_path)
+            rel_file = os.path.join(rel_folder, '_tasks.yaml')
+
+            try:
+                with open(yaml_path, 'r', encoding='utf-8') as f:
+                    data = yaml.safe_load(f)
+            except (OSError, yaml.YAMLError):
+                continue
+
+            if not data or not isinstance(data.get('tasks'), list):
+                continue
+
+            version = data.get('version', 1)
+            context = data.get('context', _derive_project_from_path(rel_folder))
+            scope = data.get('scope', 'project')
+
+            for t in data['tasks']:
+                if not isinstance(t, dict):
+                    continue
+
+                t['_source_file'] = rel_file
+                # v2 files derive project from context; v1 keeps per-task project
+                if version >= 2:
+                    t['_project'] = context
+                    t.setdefault('project', context)
+                else:
+                    t['_project'] = t.get('project', proj_name)
+
+                t['_display_id'] = '{}#{}'.format(context, t.get('id', '?'))
+
+                all_tasks.append(t)
+
+    return projects_registry, all_tasks
 
 
 def enrich_task(task, today=None):
@@ -115,10 +271,10 @@ def get_task_stats(tasks, today=None):
         s = t.get('status', 'pending')
         status_counts[s] = status_counts.get(s, 0) + 1
 
-    # Project distribution (active tasks)
+    # Project distribution (active tasks) -- prefer _project (derived) over project
     project_counts = {}
     for t in active:
-        proj = t.get('project', 'unknown')
+        proj = t.get('_project', t.get('project', 'unknown'))
         project_counts[proj] = project_counts.get(proj, 0) + 1
 
     return {

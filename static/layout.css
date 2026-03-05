@@ -66,6 +66,39 @@ body {
     letter-spacing: 0.02em;
 }
 
+/* Collapse toggle button */
+.sidebar-collapse-btn {
+    position: absolute;
+    top: 20px;
+    right: 12px;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    background: none;
+    color: var(--cs-on-surface-tertiary);
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.15s ease;
+    opacity: 0;
+}
+
+.sidebar:hover .sidebar-collapse-btn,
+.sidebar-collapse-btn:focus-visible {
+    opacity: 1;
+}
+
+.sidebar-collapse-btn:hover {
+    background: var(--cs-elevation-solid-2);
+    color: var(--cs-on-surface-primary);
+}
+
+.sidebar-brand {
+    position: relative;
+}
+
 .sidebar-brand .logo {
     width: 24px;
     height: 24px;
@@ -387,6 +420,68 @@ body {
 
 .btn-secondary:hover {
     background: var(--cs-action-secondary-hover);
+}
+
+/* === SIDEBAR COLLAPSE === */
+
+.sidebar {
+    transition: width 0.2s ease;
+}
+
+.main-content {
+    transition: margin-left 0.2s ease;
+}
+
+/* Collapsed state (via JS toggle) */
+.sidebar.collapsed {
+    width: 52px;
+    padding: var(--cs-spacing-lg) 0;
+}
+
+.sidebar.collapsed .sidebar-brand h1 span:not(.logo),
+.sidebar.collapsed .nav-section-label,
+.sidebar.collapsed .nav-item span:not(.dot),
+.sidebar.collapsed .sidebar-controls label span,
+.sidebar.collapsed .sidebar-control-label,
+.sidebar.collapsed .sidebar-controls select,
+.sidebar.collapsed .sidebar-btn {
+    display: none;
+}
+
+.sidebar.collapsed .sidebar-brand {
+    padding: 0 var(--cs-spacing-md) var(--cs-spacing-xl);
+}
+
+.sidebar.collapsed .nav-item {
+    justify-content: center;
+    padding: var(--cs-spacing-md);
+    border-left-width: 0;
+}
+
+.sidebar.collapsed .nav-item .dot {
+    margin-right: 0;
+}
+
+.sidebar.collapsed .sidebar-controls {
+    padding: var(--cs-spacing-sm);
+}
+
+.sidebar.collapsed .sidebar-controls label {
+    justify-content: center;
+}
+
+.sidebar.collapsed .sidebar-collapse-btn {
+    opacity: 1;
+    position: static;
+    margin: 0 auto;
+}
+
+.sidebar.collapsed .sidebar-collapse-btn svg {
+    transform: rotate(180deg);
+}
+
+.app-layout.sidebar-collapsed .main-content {
+    margin-left: 52px;
 }
 
 /* === RESPONSIVE === */

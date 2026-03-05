@@ -731,6 +731,10 @@ def api_files_recent():
     ops_filtered = _filter_activity_list(ops_files, project, include_private, projects)
     recent.extend(ops_filtered)
 
+    # Include _Dashboard*.md files from vault root
+    dashboard_files = activity_parser.scan_dashboard_files(config.VAULT_PATH, config.VAULT_NAME, days=days)
+    recent.extend(dashboard_files)
+
     recent.sort(key=lambda f: (f.get('date', date.min), f.get('mtime', 0)), reverse=True)
 
     # Group by date

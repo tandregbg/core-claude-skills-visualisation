@@ -344,7 +344,7 @@ async function loadTasks(documentPath) {
 
     const parts = documentPath.split('/');
     const folderName = parts.length > 1 ? parts[parts.length - 2] : parts[0];
-    headerEl.textContent = `Tasks -- ${folderName}`;
+    headerEl.textContent = `Tasks (${folderName})`;
     contentEl.innerHTML = '<p class="empty-state">Loading...</p>';
 
     try {
@@ -353,55 +353,81 @@ async function loadTasks(documentPath) {
 
         if (tasks.length > 0) {
             const ctx = tasks[0]._project || folderName;
-            headerEl.textContent = `Tasks -- ${ctx}`;
+            headerEl.textContent = `Tasks (${ctx})`;
         }
 
-        const active = tasks.filter(t => t.status !== 'completed');
-        if (active.length === 0) {
+        const open = tasks.filter(t => t.status !== 'completed' && t.status !== 'done');
+        headerEl.textContent = `Tasks (${open.length})`;
+
+        if (open.length === 0) {
             contentEl.innerHTML = '<p class="empty-state">No active tasks</p>';
             return;
         }
 
-        const groups = {};
-        const statusOrder = ['in_progress', 'blocked', 'pending'];
-        for (const t of active) {
-            const s = t.status || 'pending';
-            if (!groups[s]) groups[s] = [];
-            groups[s].push(t);
+        const prioOrder = { P0: 0, P1: 1, P2: 2, P3: 3 };
+        const statusOrder = { in_progress: 0, blocked: 1, pending: 2 };
+        open.sort((a, b) => {
+            const ps = (prioOrder[a.priority] || 9) - (prioOrder[b.priority] || 9);
+            if (ps !== 0) return ps;
+            return (statusOrder[a.status] || 9) - (statusOrder[b.status] || 9);
+        });
+
+        let html = '<table class="tasks-inline-table"><thead><tr>';
+        html += '<th></th><th>ID</th><th>Task</th><th>Priority</th><th>Status</th><th>Due</th><th>Tags</th>';
+        html += '</tr></thead><tbody>';
+
+        for (const t of open) {
+            const taskTitle = escapeHtml(t.title || t.task || '');
+            const dueStr = t.due_display || t.due_date || '';
+            const tags = (t.tags || []).join(', ');
+            const overdueClass = t.is_overdue ? ' overdue-text' : '';
+            const sourceFile = escapeAttr(t._source_file || '');
+            html += `<tr>
+                <td><button class="task-done-btn" onclick="dashCompleteTask(event, ${t.id}, '${sourceFile}')" title="Mark as done">&#10003;</button></td>
+                <td><a href="/tasks/${t.id}" style="color:inherit;text-decoration:none;">#${t.id}</a></td>
+                <td style="max-width:400px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><a href="/tasks/${t.id}" style="color:inherit;text-decoration:none;">${taskTitle}</a></td>
+                <td><span class="${getPriorityClass(t.priority)}">${escapeHtml(t.priority || '')}</span></td>
+                <td><span class="task-panel-status task-panel-status-${t.status}">${escapeHtml(t.status || '')}</span></td>
+                <td class="${overdueClass}" style="white-space:nowrap;">${escapeHtml(dueStr)}</td>
+                <td style="font-size:11px;color:var(--cs-on-surface-tertiary);">${escapeHtml(tags)}</td>
+            </tr>`;
         }
 
-        const prioWeight = { critical: 0, high: 1, medium: 2, low: 3 };
-        for (const arr of Object.values(groups)) {
-            arr.sort((a, b) => (prioWeight[a.priority] || 9) - (prioWeight[b.priority] || 9));
-        }
-
-        let html = '';
-        for (const status of statusOrder) {
-            const items = groups[status];
-            if (!items || items.length === 0) continue;
-            const label = status.replace('_', ' ');
-            html += `<div class="task-panel-group-header">${escapeHtml(label)} (${items.length})</div>`;
-            for (const t of items) {
-                const dueStr = t.due_date || '';
-                const tags = (t.tags || []).slice(0, 2).join(', ');
-                html += `
-                    <a class="task-panel-item" href="/tasks/${t.id}">
-                        <div class="task-panel-item-title">${escapeHtml(t.title)}</div>
-                        <div class="task-panel-item-meta">
-                            <span class="task-panel-item-id">#${t.id}</span>
-                            <span class="task-panel-status task-panel-status-${t.status}">${escapeHtml(t.priority || '')}</span>
-                            ${tags ? `<span class="task-panel-item-tags">${escapeHtml(tags)}</span>` : ''}
-                            ${dueStr ? `<span class="task-panel-item-due">${escapeHtml(dueStr)}</span>` : ''}
-                        </div>
-                    </a>`;
-            }
-        }
-
+        html += '</tbody></table>';
         contentEl.innerHTML = html;
     } catch (err) {
         contentEl.innerHTML = '<p class="empty-state">Failed to load tasks</p>';
     }
 }
+
+window.dashCompleteTask = async function(event, taskId, sourceFile) {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!confirm(`Mark task #${taskId} as done?`)) return;
+
+    const btn = event.target;
+    btn.disabled = true;
+
+    try {
+        const res = await fetch(`/api/tasks/${taskId}/complete`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ source_file: sourceFile }),
+        });
+        const data = await res.json();
+        if (res.ok && data.status === 'ok') {
+            if (selectedFilePath) {
+                loadTasks(selectedFilePath);
+            }
+        } else {
+            alert(data.error || 'Failed to complete task');
+            btn.disabled = false;
+        }
+    } catch (err) {
+        alert('Failed to complete task: ' + err.message);
+        btn.disabled = false;
+    }
+};
 
 async function checkChangelog(changelogPath, btnContainerId, fnName) {
     const container = document.getElementById(btnContainerId);
