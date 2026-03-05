@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.3.1] - 2026-03-05
+
+### Changed
+- **Insights page redesign (CR-001):** Replaced stat cards, timeline chart, and type distribution chart with a focused type x tag pivot heatmap
+- **Type toggle badges:** Multi-select type filtering replaces single-select dropdown. Color-coded badges show counts per type.
+- **Context filter badges:** Toggle badges per contact/project folder. Filters the pivot and detail table by context.
+- **Pivot heatmap:** Type (rows) x Tag (columns) matrix with color-coded intensity cells. Equal-width columns. Click a cell to drill down.
+- **Detail table on click:** Clicking a pivot cell shows matching insights below. Hidden by default.
+- **API extensions:** `tag_counts`, `context_counts`, `type_context_matrix`, `type_tag_matrix` in `/api/insights` response. Multi-type filter support (`type=decision,learning`).
+- **Parser:** Added `aggregate_tag_counts()`, `aggregate_context_counts()`, `aggregate_type_context_matrix()`, `aggregate_type_tag_matrix()`. `filter_insights()` supports comma-separated types.
+
+## [0.3.0] - 2026-03-04
+
+### Changed
+- **Distributed task scanning:** `parsers/tasks.py` now has `scan_tasks()` that walks the vault for all `_tasks.yaml` files, supporting both v1 (per-task `project:`) and v2 (`context`/`scope` at file level). Each task enriched with `_source_file`, `_project`, `_display_id`.
+- **TTL-based task cache:** `app.py` `_get_tasks_cached()` switched from single-file mtime to TTL-based cache (like insights), using `scan_tasks()` for aggregation.
+- **Filter by derived project:** `_filter_tasks()` uses `_project` field for matching distributed tasks.
+- Task serialization includes `_source_file`, `_project`, `_display_id` fields.
+
+### Fixed
+- **Private tasks visible when project selected:** When a specific project is explicitly selected (e.g., `personal`), private tasks within that project are now shown. Previously all `private: true` tasks were hidden regardless of project selection, making the personal project appear empty.
+
 ## [0.2.3] - 2026-03-04
 
 ### Changed
