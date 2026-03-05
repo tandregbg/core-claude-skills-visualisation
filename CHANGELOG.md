@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.3.3] - 2026-03-05
+
+### Added
+- **Documents tasks panel:** Three-column layout with tasks panel showing active tasks from the selected document's folder context. Uses nearest ancestor `_tasks.yaml` matching so contact folders show their own tasks, not the parent project's.
+- **Folder-scoped task API:** New `folder` parameter on `/api/tasks` finds the nearest `_tasks.yaml` ancestor to a given document path. Tasks grouped by status (in_progress, blocked, pending) with priority sorting.
+
+### Fixed
+- **Contact folders not discovered:** `_contacts/` subfolders with only a CHANGELOG or dated files (score=1) were excluded by the discovery threshold of 2. Lowered threshold to 1 for contact folders and added dated files as a discovery indicator.
+
 ## [0.3.2] - 2026-03-05
 
 ### Changed

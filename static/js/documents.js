@@ -294,6 +294,8 @@ function resetPreview() {
     headerEl.innerHTML = '<span class="preview-placeholder">Select a file to preview</span><a id="preview-obsidian-link" href="#" class="preview-link hidden">Open in Obsidian</a>';
     const contentEl = document.getElementById('preview-content');
     contentEl.innerHTML = '<p class="preview-empty">Click a file on the left to see its content here</p>';
+    document.getElementById('tasks-panel-title').textContent = 'Tasks';
+    document.getElementById('tasks-panel-content').innerHTML = '<p class="empty-state">Select a document to see related tasks</p>';
 }
 
 function renderFileItem(f) {
@@ -343,8 +345,12 @@ async function selectFile(relativePath, obsidianLink) {
     const contentEl = document.getElementById('preview-content');
     contentEl.innerHTML = '<p class="empty-state">Loading...</p>';
 
+    // Fetch content and tasks in parallel
+    const contentPromise = fetch(`/api/files/content?path=${encodeURIComponent(relativePath)}`);
+    const tasksPromise = loadFolderTasks(relativePath);
+
     try {
-        const res = await fetch(`/api/files/content?path=${encodeURIComponent(relativePath)}`);
+        const res = await contentPromise;
         if (!res.ok) {
             const err = await res.json();
             contentEl.innerHTML = `<p style="color: var(--cs-status-critical);">${escapeHtml(err.error || 'Failed to load')}</p>`;
@@ -356,6 +362,79 @@ async function selectFile(relativePath, obsidianLink) {
         contentEl.scrollTop = 0;
     } catch (err) {
         contentEl.innerHTML = `<p style="color: var(--cs-status-critical);">Error: ${escapeHtml(err.message)}</p>`;
+    }
+
+    await tasksPromise;
+}
+
+async function loadFolderTasks(documentPath) {
+    const titleEl = document.getElementById('tasks-panel-title');
+    const contentEl = document.getElementById('tasks-panel-content');
+
+    // Derive context label from document path (folder name)
+    const parts = documentPath.split('/');
+    const folderName = parts.length > 1 ? parts[parts.length - 2] : parts[0];
+    titleEl.textContent = `Tasks -- ${folderName}`;
+    contentEl.innerHTML = '<p class="empty-state">Loading...</p>';
+
+    try {
+        const res = await fetch(`/api/tasks?folder=${encodeURIComponent(documentPath)}`);
+        const tasks = await res.json();
+
+        // Update title with actual context from tasks
+        if (tasks.length > 0) {
+            const ctx = tasks[0]._project || folderName;
+            titleEl.textContent = `Tasks -- ${ctx}`;
+        }
+
+        // Filter to non-completed tasks
+        const active = tasks.filter(t => t.status !== 'completed');
+        if (active.length === 0) {
+            contentEl.innerHTML = '<p class="empty-state">No active tasks</p>';
+            return;
+        }
+
+        // Group by status
+        const groups = {};
+        const statusOrder = ['in_progress', 'blocked', 'pending'];
+        for (const t of active) {
+            const s = t.status || 'pending';
+            if (!groups[s]) groups[s] = [];
+            groups[s].push(t);
+        }
+
+        // Sort each group by priority
+        const prioWeight = { critical: 0, high: 1, medium: 2, low: 3 };
+        for (const arr of Object.values(groups)) {
+            arr.sort((a, b) => (prioWeight[a.priority] || 9) - (prioWeight[b.priority] || 9));
+        }
+
+        let html = '';
+        for (const status of statusOrder) {
+            const items = groups[status];
+            if (!items || items.length === 0) continue;
+            const label = status.replace('_', ' ');
+            html += `<div class="task-panel-group-header">${escapeHtml(label)} (${items.length})</div>`;
+            for (const t of items) {
+                const shortId = `#${t.id}`;
+                const dueStr = t.due_date || '';
+                const tags = (t.tags || []).slice(0, 2).join(', ');
+                html += `
+                    <a class="task-panel-item" href="/tasks/${t.id}">
+                        <div class="task-panel-item-title">${escapeHtml(t.title)}</div>
+                        <div class="task-panel-item-meta">
+                            <span class="task-panel-item-id">${escapeHtml(shortId)}</span>
+                            <span class="task-panel-status task-panel-status-${t.status}">${escapeHtml(t.priority || '')}</span>
+                            ${tags ? `<span class="task-panel-item-tags">${escapeHtml(tags)}</span>` : ''}
+                            ${dueStr ? `<span class="task-panel-item-due">${escapeHtml(dueStr)}</span>` : ''}
+                        </div>
+                    </a>`;
+            }
+        }
+
+        contentEl.innerHTML = html;
+    } catch (err) {
+        contentEl.innerHTML = `<p class="empty-state">Failed to load tasks</p>`;
     }
 }
 

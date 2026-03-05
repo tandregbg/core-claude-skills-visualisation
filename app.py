@@ -155,6 +155,43 @@ def _filter_tasks(tasks, project=None, include_private=False):
     return result
 
 
+def _filter_tasks_by_folder(tasks, document_path):
+    """Filter tasks to those from the nearest ancestor _tasks.yaml of a document.
+
+    Given a document path like '_contacts/prashant/260305-file.md', finds tasks
+    whose _source_file directory is the best (deepest) ancestor match.
+    Falls back to all tasks matching the document's directory if no _source_file match.
+    """
+    import posixpath
+    doc_dir = posixpath.dirname(document_path.replace(os.sep, '/'))
+
+    # Collect all unique _source_file directories and their tasks
+    source_dirs = {}  # dir -> [tasks]
+    for t in tasks:
+        src = t.get('_source_file', '')
+        if src:
+            src_dir = posixpath.dirname(src.replace(os.sep, '/'))
+        else:
+            continue
+        source_dirs.setdefault(src_dir, []).append(t)
+
+    # Find the deepest _source_file directory that is an ancestor of (or equal to) doc_dir
+    best_match = None
+    best_len = -1
+    for src_dir in source_dirs:
+        # src_dir is ancestor if doc_dir starts with src_dir
+        if doc_dir == src_dir or doc_dir.startswith(src_dir + '/'):
+            if len(src_dir) > best_len:
+                best_match = src_dir
+                best_len = len(src_dir)
+
+    if best_match is not None:
+        return source_dirs[best_match]
+
+    # No ancestor match -- fall back to empty
+    return []
+
+
 def _filter_activity(activity_data, project=None, include_private_folders=False, projects_config=None):
     """Filter activity files by project selection.
 
@@ -381,13 +418,25 @@ def api_projects():
 
 @app.route('/api/tasks')
 def api_tasks():
-    """Return filtered tasks list."""
+    """Return filtered tasks list.
+
+    Optional 'folder' param: a vault-relative file path. When provided,
+    returns only tasks from the nearest ancestor _tasks.yaml to that path.
+    This scopes tasks to the correct context (e.g. a contact folder rather
+    than the entire parent project).
+    """
     project = request.args.get('project', 'all')
     include_private = request.args.get('private', 'false') == 'true'
+    folder = request.args.get('folder', '')
     today = date.today()
 
     projects, all_tasks = _get_tasks_cached(today)
-    filtered = _filter_tasks(all_tasks, project, include_private)
+
+    if folder:
+        # Find tasks from the nearest _tasks.yaml ancestor of the document path
+        filtered = _filter_tasks_by_folder(all_tasks, folder)
+    else:
+        filtered = _filter_tasks(all_tasks, project, include_private)
     return jsonify([_serialize_task(t) for t in filtered])
 
 

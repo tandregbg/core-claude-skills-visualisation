@@ -75,8 +75,8 @@ def discover_projects(vault_path, registered_projects=None, scan_depth=2):
 
     discovered = {}
 
-    def _check_folder(folder_path, name):
-        """Check if a folder has ops structure (>= 2 indicators)."""
+    def _check_folder(folder_path, name, min_score=2):
+        """Check if a folder has ops structure (>= min_score indicators)."""
         full = os.path.join(vault_path, folder_path)
         if not os.path.isdir(full):
             return
@@ -89,7 +89,17 @@ def discover_projects(vault_path, registered_projects=None, scan_depth=2):
             if os.path.isdir(os.path.join(full, d)):
                 score += 1
 
-        if score >= 2 and folder_path.rstrip('/') not in registered_paths:
+        # Count dated files (YYMMDD-*.md) as an indicator
+        if score < min_score:
+            try:
+                for f in os.listdir(full):
+                    if f.endswith('.md') and len(f) > 7 and f[:6].isdigit() and f[6] == '-':
+                        score += 1
+                        break  # one dated file is enough
+            except OSError:
+                pass
+
+        if score >= min_score and folder_path.rstrip('/') not in registered_paths:
             discovered[name] = {
                 'vault': folder_path if folder_path.endswith('/') else folder_path + '/',
                 'shared_view': True,
@@ -111,6 +121,8 @@ def discover_projects(vault_path, registered_projects=None, scan_depth=2):
 
         # Scan inside _projects/ and _contacts/ as container folders
         if entry in ('_projects', '_contacts', '_private'):
+            # Contact folders need lower threshold -- a CHANGELOG or dated files is enough
+            threshold = 1 if entry == '_contacts' else 2
             try:
                 sub_entries = os.listdir(full_entry)
             except OSError:
@@ -120,7 +132,7 @@ def discover_projects(vault_path, registered_projects=None, scan_depth=2):
                     continue
                 sub_path = os.path.join(entry, sub)
                 if os.path.isdir(os.path.join(vault_path, sub_path)):
-                    _check_folder(sub_path, sub)
+                    _check_folder(sub_path, sub, min_score=threshold)
             continue
 
         # Skip other _ prefixed folders (system files like _tasks.yaml etc.)
