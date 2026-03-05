@@ -892,6 +892,41 @@ a.task-panel-item:hover {
     white-space: nowrap;
 }
 
+/* Document threading */
+.doc-thread {
+    border-left: 2px solid var(--cs-elevation-solid-3);
+    margin-left: var(--cs-spacing-sm);
+    margin-bottom: var(--cs-spacing-xs);
+}
+
+.doc-thread-prep {
+    opacity: 0.7;
+}
+
+.file-item-prep {
+    padding-top: 2px;
+    padding-bottom: 2px;
+}
+
+.file-item-prep .file-item-name {
+    font-size: var(--cs-font-size-body-xs);
+    color: var(--cs-on-surface-tertiary);
+}
+
+.prep-label {
+    display: inline-block;
+    font-size: 9px;
+    font-weight: var(--cs-font-weight-medium);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--cs-on-surface-tertiary);
+    background: var(--cs-elevation-solid-3);
+    padding: 1px 4px;
+    border-radius: 2px;
+    margin-right: 4px;
+    vertical-align: middle;
+}
+
 .day-badge-overdue {
     border-color: var(--cs-status-critical, #ef4444);
     color: var(--cs-status-critical, #ef4444);

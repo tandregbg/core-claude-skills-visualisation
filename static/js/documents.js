@@ -275,7 +275,7 @@ function renderFileList(rawData, filterDay) {
                     </div>
                     <span class="day-group-count">${files.length}</span>
                 </div>
-                ${files.map(f => renderFileItem(f)).join('')}
+                ${renderThreadedFiles(files)}
             </div>
         `;
     }).join('');
@@ -298,7 +298,54 @@ function resetPreview() {
     document.getElementById('tasks-panel-content').innerHTML = '<p class="empty-state">Select a document to see related tasks</p>';
 }
 
-function renderFileItem(f) {
+function extractThreadKey(filename) {
+    let name = filename;
+    name = name.replace(/^\d{6}-/, '').replace(/\.md$/, '').toLowerCase();
+    const isPrep = /^förberedelse-/.test(name) || /^preparation-/.test(name);
+    name = name.replace(/^(förberedelse|preparation)-/, '');
+    name = name.replace(/^(samtal|lunch|möte|meeting|call|daily)-/, '');
+    const tokens = name.split('-').filter(t => t !== 'tomas' && t.length > 0);
+    const key = tokens.slice(0, 2).join('-') || name;
+    return { key, isPrep };
+}
+
+function renderThreadedFiles(files) {
+    const threads = {};
+    const threadOrder = [];
+    for (const f of files) {
+        const { key, isPrep } = extractThreadKey(f.filename);
+        if (!threads[key]) {
+            threads[key] = { prep: null, main: [] };
+            threadOrder.push(key);
+        }
+        if (isPrep) {
+            threads[key].prep = f;
+        } else {
+            threads[key].main.push(f);
+        }
+    }
+
+    let html = '';
+    for (const key of threadOrder) {
+        const thread = threads[key];
+        const hasThread = thread.prep && thread.main.length > 0;
+
+        if (hasThread) {
+            html += `<div class="doc-thread">`;
+            html += `<div class="doc-thread-prep">${renderFileItem(thread.prep, true)}</div>`;
+            for (const f of thread.main) {
+                html += renderFileItem(f);
+            }
+            html += `</div>`;
+        } else {
+            if (thread.prep) html += renderFileItem(thread.prep);
+            for (const f of thread.main) html += renderFileItem(f);
+        }
+    }
+    return html;
+}
+
+function renderFileItem(f, isThreadPrep) {
     const isSelected = f.relative_path === selectedFilePath;
     const selectedClass = isSelected ? ' selected' : '';
     const isOps = f.domain === 'ops';
@@ -319,6 +366,15 @@ function renderFileItem(f) {
     const contextLabel = isOps && context && context !== f.project
         ? `<span class="file-item-context">${escapeHtml(context)}</span>`
         : '';
+
+    if (isThreadPrep) {
+        return `
+            <div class="file-item file-item-prep${selectedClass}"
+                 onclick="selectFile('${escapeAttr(f.relative_path)}', '${escapeAttr(f.obsidian_link)}')"
+                 data-path="${escapeAttr(f.relative_path)}">
+                <div class="file-item-name"><span class="prep-label">prep</span> ${escapeHtml(displayName)}</div>
+            </div>`;
+    }
 
     return `
         <div class="file-item${selectedClass}${isOps ? ' file-item-ops' : ''}"

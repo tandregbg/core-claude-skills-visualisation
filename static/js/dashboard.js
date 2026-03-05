@@ -212,7 +212,7 @@ function renderDocsList() {
 
     let html = '';
 
-    // Documents grouped by project
+    // Documents grouped by project, then threaded
     const docsByProject = groupBy(docs, f => f.project || 'other');
     for (const [proj, files] of sortedEntries(docsByProject)) {
         html += `<div class="day-group">`;
@@ -220,9 +220,7 @@ function renderDocsList() {
             <div class="day-group-label"><span class="project-badge project-${proj}">${escapeHtml(proj)}</span></div>
             <span class="day-group-count">${files.length}</span>
         </div>`;
-        for (const f of files) {
-            html += renderFileItem(f);
-        }
+        html += renderThreadedFiles(files);
         html += `</div>`;
     }
 
@@ -248,7 +246,7 @@ function renderDocsList() {
     }
 }
 
-function renderFileItem(f, isOps) {
+function renderFileItem(f, isOps, isThreadPrep) {
     const isSelected = f.relative_path === selectedFilePath;
     const selectedClass = isSelected ? ' selected' : '';
 
@@ -265,6 +263,16 @@ function renderFileItem(f, isOps) {
 
     const context = isOps && f.ops_context && f.ops_context !== f.project
         ? `<span class="file-item-context">${escapeHtml(f.ops_context)}</span>` : '';
+
+    // Thread prep: compact single-line label
+    if (isThreadPrep) {
+        return `
+            <div class="file-item file-item-prep${selectedClass}"
+                 onclick="dashSelectFile('${escapeAttr(f.relative_path)}', '${escapeAttr(f.obsidian_link)}')"
+                 data-path="${escapeAttr(f.relative_path)}">
+                <div class="file-item-name"><span class="prep-label">prep</span> ${escapeHtml(displayName)}</div>
+            </div>`;
+    }
 
     return `
         <div class="file-item${selectedClass}${isOps ? ' file-item-ops' : ''}"
@@ -397,6 +405,69 @@ function resetTasks() {
     document.getElementById('dashboard-tasks-header').textContent = 'Tasks';
     document.getElementById('dashboard-tasks-content').innerHTML =
         '<p class="empty-state">Select a document to see related tasks</p>';
+}
+
+// -- Document threading --
+
+function extractThreadKey(filename) {
+    let name = filename;
+    // Strip date prefix and .md
+    name = name.replace(/^\d{6}-/, '').replace(/\.md$/, '').toLowerCase();
+    // Remove preparation prefix
+    const isPrep = /^förberedelse-/.test(name) || /^preparation-/.test(name);
+    name = name.replace(/^(förberedelse|preparation)-/, '');
+    // Remove meeting type words
+    name = name.replace(/^(samtal|lunch|möte|meeting|call|daily)-/, '');
+    // Tokenize and remove 'tomas'
+    const tokens = name.split('-').filter(t => t !== 'tomas' && t.length > 0);
+    // Use first 2 tokens as thread key (typically contact name)
+    const key = tokens.slice(0, 2).join('-') || name;
+    return { key, isPrep };
+}
+
+function renderThreadedFiles(files) {
+    // Group files into threads by thread key
+    const threads = {};
+    const threadOrder = [];
+    for (const f of files) {
+        const { key, isPrep } = extractThreadKey(f.filename);
+        if (!threads[key]) {
+            threads[key] = { prep: null, main: [] };
+            threadOrder.push(key);
+        }
+        if (isPrep) {
+            threads[key].prep = f;
+        } else {
+            threads[key].main.push(f);
+        }
+    }
+
+    let html = '';
+    for (const key of threadOrder) {
+        const thread = threads[key];
+        const hasThread = thread.prep && thread.main.length > 0;
+
+        if (hasThread) {
+            // Render as a combined thread
+            html += `<div class="doc-thread">`;
+            html += `<div class="doc-thread-prep">`;
+            html += renderFileItem(thread.prep, false, true);
+            html += `</div>`;
+            for (const f of thread.main) {
+                html += renderFileItem(f);
+            }
+            html += `</div>`;
+        } else {
+            // Standalone files
+            if (thread.prep) {
+                html += renderFileItem(thread.prep);
+            }
+            for (const f of thread.main) {
+                html += renderFileItem(f);
+            }
+        }
+    }
+    return html;
 }
 
 // -- Helpers --

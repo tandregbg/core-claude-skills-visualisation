@@ -24,6 +24,7 @@ DOMAIN_PATTERNS = [
 TYPE_KEYWORDS = [
     ('standup', 'standup'),
     ('daily-standup', 'standup'),
+    ('förberedelse', 'preparation'),
     ('forberedelse', 'preparation'),
     ('preparation', 'preparation'),
     ('monthly-part-A', 'monthly-financial'),
