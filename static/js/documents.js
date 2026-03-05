@@ -408,10 +408,13 @@ async function selectFile(relativePath, obsidianLink) {
     headerEl.innerHTML = `
         <span class="preview-filename">${escapeHtml(filename)}</span>
         <span class="preview-header-links">
-            <a href="#" class="preview-link preview-changelog-link" onclick="loadChangelog('${escapeAttr(changelogPath)}'); return false;">History</a>
+            <span id="docs-changelog-btn"></span>
             <a href="${escapeAttr(obsidianLink)}" class="preview-link">Open in Obsidian</a>
         </span>
     `;
+
+    // Check if CHANGELOG exists, show button if so
+    checkChangelogDoc(changelogPath);
 
     const contentEl = document.getElementById('preview-content');
     contentEl.innerHTML = '<p class="empty-state">Loading...</p>';
@@ -506,6 +509,19 @@ async function loadFolderTasks(documentPath) {
         contentEl.innerHTML = html;
     } catch (err) {
         contentEl.innerHTML = `<p class="empty-state">Failed to load tasks</p>`;
+    }
+}
+
+async function checkChangelogDoc(changelogPath) {
+    const container = document.getElementById('docs-changelog-btn');
+    if (!container) return;
+    try {
+        const res = await fetch(`/api/files/content?path=${encodeURIComponent(changelogPath)}`);
+        if (res.ok) {
+            container.innerHTML = `<a href="#" class="preview-link" onclick="loadChangelog('${changelogPath.replace(/'/g, "\\'")}'); return false;">CHANGELOG</a>`;
+        }
+    } catch (e) {
+        // No changelog
     }
 }
 

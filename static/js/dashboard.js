@@ -296,7 +296,7 @@ window.dashSelectFile = async function(relativePath, obsidianLink) {
         el.classList.toggle('selected', el.dataset.path === relativePath);
     });
 
-    // Preview header with changelog link
+    // Preview header
     const headerEl = document.getElementById('dashboard-preview-header');
     const filename = relativePath.split('/').pop();
     const folderPath = relativePath.substring(0, relativePath.lastIndexOf('/'));
@@ -305,10 +305,13 @@ window.dashSelectFile = async function(relativePath, obsidianLink) {
     headerEl.innerHTML = `
         <span class="preview-filename">${escapeHtml(filename)}</span>
         <span class="preview-header-links">
-            <a href="#" class="preview-link preview-changelog-link" onclick="dashLoadChangelog('${escapeAttr(changelogPath)}'); return false;">History</a>
+            <span id="dashboard-changelog-btn"></span>
             <a href="${escapeAttr(obsidianLink)}" class="preview-link">Open in Obsidian</a>
         </span>
     `;
+
+    // Check if CHANGELOG exists, show button if so
+    checkChangelog(changelogPath, 'dashboard-changelog-btn', 'dashLoadChangelog');
 
     // Load content and tasks in parallel
     const contentEl = document.getElementById('dashboard-preview-content');
@@ -397,6 +400,19 @@ async function loadTasks(documentPath) {
         contentEl.innerHTML = html;
     } catch (err) {
         contentEl.innerHTML = '<p class="empty-state">Failed to load tasks</p>';
+    }
+}
+
+async function checkChangelog(changelogPath, btnContainerId, fnName) {
+    const container = document.getElementById(btnContainerId);
+    if (!container) return;
+    try {
+        const res = await fetch(`/api/files/content?path=${encodeURIComponent(changelogPath)}`);
+        if (res.ok) {
+            container.innerHTML = `<a href="#" class="preview-link" onclick="${fnName}('${changelogPath.replace(/'/g, "\\'")}'); return false;">CHANGELOG</a>`;
+        }
+    } catch (e) {
+        // No changelog -- leave button hidden
     }
 }
 

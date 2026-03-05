@@ -653,8 +653,8 @@
 
 /* Tasks panel (right column) */
 .documents-tasks {
-    width: 280px;
-    min-width: 240px;
+    width: 340px;
+    min-width: 300px;
     flex-shrink: 0;
     background: var(--cs-elevation-solid-0);
     border-radius: var(--cs-border-radius-xs);
@@ -860,8 +860,8 @@ a.task-panel-item:hover {
 }
 
 .dashboard-col-tasks {
-    width: 280px;
-    min-width: 240px;
+    width: 340px;
+    min-width: 300px;
     flex-shrink: 0;
 }
 
