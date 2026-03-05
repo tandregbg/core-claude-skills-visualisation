@@ -1,5 +1,5 @@
 /**
- * insights.js -- Insights page: toggle badges, context cloud, pivot heatmap, detail table
+ * insights.js -- Insights page: type badges, context badges, type x tag pivot, detail table
  */
 
 const INSIGHT_TYPES = ['decision', 'preference', 'learning', 'opportunity', 'pattern'];
@@ -14,12 +14,9 @@ const INSIGHT_TYPE_COLORS = {
 
 // State
 let activeTypes = new Set(INSIGHT_TYPES);
-let activeContexts = new Set();
-let allContextCounts = {};
+let activeContexts = new Set(); // empty = all contexts shown
 let lastInsights = [];
-let showAllContexts = false;
-let pivotSelection = null; // {type, context} or null
-const TOP_CONTEXTS_COUNT = 15;
+let pivotSelection = null; // {type, tag} or null
 const PIVOT_MAX_COLS = 15;
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -28,10 +25,6 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('folder-change', loadInsights);
     window.addEventListener('privacy-change', loadInsights);
     document.getElementById('status-filter').addEventListener('change', loadInsights);
-    document.getElementById('context-show-all').addEventListener('click', () => {
-        showAllContexts = !showAllContexts;
-        renderContextCloud(allContextCounts);
-    });
     document.getElementById('insights-list-close').addEventListener('click', () => {
         pivotSelection = null;
         document.getElementById('insights-list-card').style.display = 'none';
@@ -60,7 +53,7 @@ async function loadInsights() {
 
         let insights = data.insights;
 
-        // Client-side context filtering (OR logic -- show insights from any selected context)
+        // Client-side context filtering
         if (activeContexts.size > 0) {
             insights = insights.filter(i =>
                 activeContexts.has(i.context || i.project)
@@ -68,15 +61,26 @@ async function loadInsights() {
         }
 
         lastInsights = insights;
-        allContextCounts = data.context_counts || {};
+
+        // Recompute tag matrix from filtered insights (client-side)
+        const tagCounts = {};
+        const typeTagMatrix = {};
+        for (const i of insights) {
+            const t = i.type || 'other';
+            if (!typeTagMatrix[t]) typeTagMatrix[t] = {};
+            for (const tag of (i.tags || [])) {
+                tagCounts[tag] = (tagCounts[tag] || 0) + 1;
+                typeTagMatrix[t][tag] = (typeTagMatrix[t][tag] || 0) + 1;
+            }
+        }
 
         renderTypeBadges(data.type_counts || {});
-        renderContextCloud(allContextCounts);
-        renderPivotTable(data.type_context_matrix || {}, allContextCounts);
+        renderContextBadges(data.context_counts || {});
+        renderPivotTable(typeTagMatrix, tagCounts);
         renderInsightsCount(insights.length);
 
         if (pivotSelection) {
-            showPivotDetail(pivotSelection.type, pivotSelection.context);
+            showPivotDetail(pivotSelection.type, pivotSelection.tag);
         }
     } catch (err) {
         console.error('Failed to load insights:', err);
@@ -85,7 +89,7 @@ async function loadInsights() {
 
 function renderEmpty() {
     renderTypeBadges({});
-    renderContextCloud({});
+    renderContextBadges({});
     renderPivotTable({}, {});
     renderInsightsCount(0);
     document.getElementById('insights-list-card').style.display = 'none';
@@ -129,35 +133,29 @@ window.toggleType = function(type) {
     loadInsights();
 };
 
-// -- Context cloud --
+// -- Context filter badges --
 
-function renderContextCloud(contextCounts) {
-    const container = document.getElementById('context-cloud');
-    const showAllBtn = document.getElementById('context-show-all');
-
+function renderContextBadges(contextCounts) {
+    const container = document.getElementById('context-badges');
     const sorted = Object.entries(contextCounts).sort((a, b) => b[1] - a[1]);
 
     if (sorted.length === 0) {
-        container.innerHTML = '<span class="empty-state" style="padding:8px 0;">No contexts</span>';
-        showAllBtn.style.display = 'none';
+        container.innerHTML = '';
         return;
     }
 
-    const visible = showAllContexts ? sorted : sorted.slice(0, TOP_CONTEXTS_COUNT);
-    const hasMore = sorted.length > TOP_CONTEXTS_COUNT;
-
-    showAllBtn.style.display = hasMore ? 'inline-block' : 'none';
-    showAllBtn.textContent = showAllContexts ? 'Show less' : `Show all (${sorted.length})`;
-
-    container.innerHTML = visible.map(([ctx, count]) => {
+    container.innerHTML = sorted.map(([ctx, count]) => {
         const isActive = activeContexts.has(ctx);
-        return `<button class="tag-cloud-pill${isActive ? ' active' : ''}"
-                    onclick="toggleContext('${escapeHtml(ctx)}')"
-                    title="${count} insight${count !== 1 ? 's' : ''}">
-                    ${escapeHtml(ctx)}
-                    <span class="tag-cloud-count">${count}</span>
+        return `<button class="day-badge${isActive ? ' active' : ''}"
+                    onclick="toggleContext('${escapeAttr(ctx)}')">
+                    <span class="day-badge-label">${escapeHtml(ctx)}</span>
+                    <span class="day-badge-count">${count}</span>
                 </button>`;
     }).join('');
+}
+
+function escapeAttr(s) {
+    return s.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
 }
 
 window.toggleContext = function(ctx) {
@@ -171,17 +169,17 @@ window.toggleContext = function(ctx) {
     loadInsights();
 };
 
-// -- Pivot heatmap (type x context) --
+// -- Pivot heatmap (type x tag) --
 
-function renderPivotTable(matrix, contextCounts) {
+function renderPivotTable(typeTagMatrix, tagCounts) {
     const container = document.getElementById('type-tag-pivot');
 
-    const topContexts = Object.entries(contextCounts)
+    const topTags = Object.entries(tagCounts)
         .sort((a, b) => b[1] - a[1])
         .slice(0, PIVOT_MAX_COLS)
         .map(e => e[0]);
 
-    if (topContexts.length === 0) {
+    if (topTags.length === 0) {
         container.innerHTML = '<p class="empty-state">No data for pivot</p>';
         return;
     }
@@ -190,23 +188,23 @@ function renderPivotTable(matrix, contextCounts) {
 
     let maxVal = 0;
     for (const type of visibleTypes) {
-        for (const ctx of topContexts) {
-            const val = (matrix[type] || {})[ctx] || 0;
+        for (const tag of topTags) {
+            const val = (typeTagMatrix[type] || {})[tag] || 0;
             if (val > maxVal) maxVal = val;
         }
     }
 
     let html = '<table class="pivot-table"><thead><tr><th class="pivot-row-header"></th>';
-    html += topContexts.map(ctx => `<th class="pivot-col-header" title="${escapeHtml(ctx)}">${escapeHtml(ctx)}</th>`).join('');
+    html += topTags.map(tag => `<th class="pivot-col-header" title="${escapeHtml(tag)}">${escapeHtml(tag)}</th>`).join('');
     html += '</tr></thead><tbody>';
 
     for (const type of visibleTypes) {
         const colors = INSIGHT_TYPE_COLORS[type];
         html += `<tr><td class="pivot-row-header"><span class="insight-badge insight-${type}">${type}</span></td>`;
-        for (const ctx of topContexts) {
-            const val = (matrix[type] || {})[ctx] || 0;
+        for (const tag of topTags) {
+            const val = (typeTagMatrix[type] || {})[tag] || 0;
             const opacity = maxVal > 0 ? Math.max(0.08, val / maxVal) : 0;
-            const isSelected = pivotSelection && pivotSelection.type === type && pivotSelection.context === ctx;
+            const isSelected = pivotSelection && pivotSelection.type === type && pivotSelection.tag === tag;
             const cellStyle = val > 0
                 ? `background:${colors.chart};`
                 : '';
@@ -215,8 +213,8 @@ function renderPivotTable(matrix, contextCounts) {
                 : '';
             html += `<td class="pivot-cell${val > 0 ? ' pivot-cell-filled' : ''}${isSelected ? ' pivot-cell-selected' : ''}"
                         style="${cellStyle}"
-                        onclick="pivotClick('${type}','${escapeAttr(ctx)}')"
-                        title="${type} + ${ctx}: ${val}">
+                        onclick="pivotClick('${type}','${escapeAttr(tag)}')"
+                        title="${type} + ${tag}: ${val}">
                         <span class="pivot-cell-inner" style="${innerStyle}">${val || ''}</span>
                     </td>`;
         }
@@ -227,34 +225,27 @@ function renderPivotTable(matrix, contextCounts) {
     container.innerHTML = html;
 }
 
-function escapeAttr(s) {
-    return s.replace(/'/g, "\\'").replace(/"/g, '&quot;');
-}
-
 function renderPivotHighlight() {
     document.querySelectorAll('.pivot-cell').forEach(cell => {
         cell.classList.remove('pivot-cell-selected');
     });
 }
 
-window.pivotClick = function(type, ctx) {
-    // If clicking the same cell, deselect
-    if (pivotSelection && pivotSelection.type === type && pivotSelection.context === ctx) {
+window.pivotClick = function(type, tag) {
+    if (pivotSelection && pivotSelection.type === type && pivotSelection.tag === tag) {
         pivotSelection = null;
         document.getElementById('insights-list-card').style.display = 'none';
         renderPivotHighlight();
         return;
     }
 
-    pivotSelection = { type, context: ctx };
-    showPivotDetail(type, ctx);
+    pivotSelection = { type, tag };
+    showPivotDetail(type, tag);
 
-    // Update highlight
     document.querySelectorAll('.pivot-cell').forEach(cell => {
         cell.classList.remove('pivot-cell-selected');
     });
-    // Match by title prefix
-    const prefix = `${type} + ${ctx}:`;
+    const prefix = `${type} + ${tag}:`;
     document.querySelectorAll('.pivot-cell').forEach(cell => {
         if (cell.title.startsWith(prefix)) {
             cell.classList.add('pivot-cell-selected');
@@ -262,15 +253,15 @@ window.pivotClick = function(type, ctx) {
     });
 };
 
-function showPivotDetail(type, ctx) {
+function showPivotDetail(type, tag) {
     const filtered = lastInsights.filter(i =>
-        i.type === type && (i.context || i.project) === ctx
+        i.type === type && (i.tags || []).includes(tag)
     );
 
     const card = document.getElementById('insights-list-card');
     const titleEl = document.getElementById('insights-list-title');
 
-    titleEl.innerHTML = `<span class="insight-badge insight-${type}">${type}</span> + <span class="project-badge">${escapeHtml(ctx)}</span> <span class="file-count-label">${filtered.length} insight${filtered.length !== 1 ? 's' : ''}</span>`;
+    titleEl.innerHTML = `<span class="insight-badge insight-${type}">${type}</span> + <span class="tag-badge">${escapeHtml(tag)}</span> <span class="file-count-label">${filtered.length} insight${filtered.length !== 1 ? 's' : ''}</span>`;
 
     renderInsightsList(filtered);
     card.style.display = 'block';
@@ -289,7 +280,7 @@ function renderInsightsList(insights) {
     }
 
     container.innerHTML = '<table class="data-table"><thead><tr>' +
-        '<th>Date</th><th>Summary</th><th>Tags</th><th>Source</th>' +
+        '<th>Date</th><th>Summary</th><th>Context</th><th>Tags</th><th>Source</th>' +
         '</tr></thead><tbody>' +
         insights.map(i => {
             const tags = (i.tags || []).map(t =>
@@ -307,6 +298,7 @@ function renderInsightsList(insights) {
                         <div class="insight-summary">${escapeHtml(i.summary)}</div>
                         ${i.rationale ? `<div class="insight-rationale">${escapeHtml(i.rationale)}</div>` : ''}
                     </td>
+                    <td><span class="project-badge project-${i.project}">${escapeHtml(i.context || i.project)}</span></td>
                     <td>${tags}</td>
                     <td style="font-size: 11px;">${sourceLink}</td>
                 </tr>
