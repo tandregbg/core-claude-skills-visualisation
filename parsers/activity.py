@@ -287,6 +287,11 @@ def scan_ops_files(vault_path, projects, vault_name=None, days=30):
         if not os.path.isdir(full_folder):
             continue
 
+        # Skip contact folders -- their CHANGELOGs are auto-generated logs,
+        # not meaningful project status updates
+        if folder.startswith('_contacts/'):
+            continue
+
         # Walk folder tree for ops files
         for root, dirs, filenames in os.walk(full_folder):
             dirs[:] = [d for d in dirs if not d.startswith('.')]
