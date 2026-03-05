@@ -8,9 +8,31 @@
 <!-- Day navigation -->
 <div class="day-badges" id="dashboard-day-nav"></div>
 
-<!-- Day overview sections -->
-<div id="dashboard-content">
-    <p class="empty-state">Loading...</p>
+<!-- Three-column layout -->
+<div class="dashboard-layout">
+    <!-- Left: documents & project updates -->
+    <div class="dashboard-col dashboard-col-docs" id="dashboard-docs">
+        <div class="dashboard-col-header">Documents</div>
+        <div id="dashboard-docs-content">
+            <p class="empty-state">Loading...</p>
+        </div>
+    </div>
+
+    <!-- Center: tasks -->
+    <div class="dashboard-col dashboard-col-tasks" id="dashboard-tasks">
+        <div class="dashboard-col-header">Tasks</div>
+        <div id="dashboard-tasks-content">
+            <p class="empty-state">Loading...</p>
+        </div>
+    </div>
+
+    <!-- Right: project status -->
+    <div class="dashboard-col dashboard-col-projects" id="dashboard-projects">
+        <div class="dashboard-col-header">Projects</div>
+        <div id="dashboard-projects-content">
+            <p class="empty-state">Loading...</p>
+        </div>
+    </div>
 </div>
 
 {% endblock %}
