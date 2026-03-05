@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.3.1] - 2026-03-05
+## [0.3.2] - 2026-03-05
 
 ### Changed
 - **Insights page redesign (CR-001):** Replaced stat cards, timeline chart, and type distribution chart with a focused type x tag pivot heatmap
@@ -10,6 +10,12 @@
 - **Detail table on click:** Clicking a pivot cell shows matching insights below. Hidden by default.
 - **API extensions:** `tag_counts`, `context_counts`, `type_context_matrix`, `type_tag_matrix` in `/api/insights` response. Multi-type filter support (`type=decision,learning`).
 - **Parser:** Added `aggregate_tag_counts()`, `aggregate_context_counts()`, `aggregate_type_context_matrix()`, `aggregate_type_tag_matrix()`. `filter_insights()` supports comma-separated types.
+- **Documents page** replaces Recent Updates page (`/documents` replaces `/recent`)
+- **Project filter badges:** Toggle by project/context on the Documents page
+- **Document type filter badges:** Toggle by type (standup, conversation, board, preparation, etc.)
+- Day badges, file list with markdown preview panel preserved
+- API: `/api/files/recent` now returns `project_counts` and `type_counts` for badge rendering
+- Sidebar nav: "Recent" renamed to "Documents"
 
 ## [0.3.0] - 2026-03-04
 
