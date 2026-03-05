@@ -139,14 +139,18 @@ def scan_insights(vault_path, projects, vault_name=None):
 
 
 def filter_insights(insights, project=None, insight_type=None, status='active'):
-    """Filter insights by project, type, and status."""
+    """Filter insights by project, type(s), and status.
+
+    insight_type can be a single type, comma-separated types, or 'all'.
+    """
     result = insights
 
     if project and project != 'all':
         result = [i for i in result if i['project'] == project]
 
     if insight_type and insight_type != 'all':
-        result = [i for i in result if i['type'] == insight_type]
+        types = set(t.strip() for t in insight_type.split(','))
+        result = [i for i in result if i['type'] in types]
 
     if status and status != 'all':
         result = [i for i in result if i['status'] == status]
@@ -183,6 +187,30 @@ def aggregate_monthly_counts(insights):
         {'month': m, 'counts': monthly[m]}
         for m in sorted(monthly.keys())
     ]
+
+
+def aggregate_tag_counts(insights):
+    """Count insights per tag across all insights."""
+    counts = {}
+    for i in insights:
+        for tag in i.get('tags', []):
+            counts[tag] = counts.get(tag, 0) + 1
+    return counts
+
+
+def aggregate_type_tag_matrix(insights):
+    """Build a type x tag count matrix.
+
+    Returns {type: {tag: count}} for all types and tags present.
+    """
+    matrix = {}
+    for i in insights:
+        t = i.get('type', 'other')
+        if t not in matrix:
+            matrix[t] = {}
+        for tag in i.get('tags', []):
+            matrix[t][tag] = matrix[t].get(tag, 0) + 1
+    return matrix
 
 
 def serialize_insight(insight):

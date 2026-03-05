@@ -31,7 +31,7 @@ _settings = config.load_settings()
 # ---------------------------------------------------------------------------
 
 _cache = {
-    'tasks': {'data': None, 'projects': None, 'mtime': 0},
+    'tasks': {'data': None, 'projects': None, 'scan_time': 0},
     'history': {'data': None, 'mtime': 0},
     'activity': {'data': None, 'scan_time': 0},
     'insights': {'data': None, 'scan_time': 0},
@@ -46,21 +46,28 @@ def _file_mtime(path):
 
 
 def _get_tasks_cached(today=None):
-    """Return (projects, enriched_tasks) with mtime-based cache.
+    """Return (projects, enriched_tasks) with TTL-based cache.
 
-    Projects are merged from _tasks.yaml registry + auto-discovered
-    ops-structured folders in the vault.  Settings project overrides
-    (enabled, shared_view) are applied on top.
+    Uses scan_tasks() to aggregate all _tasks.yaml files across the vault.
+    Projects are merged from root registry + auto-discovered ops-structured
+    folders.  Settings project overrides (enabled, shared_view) are applied.
     """
-    current_mtime = _file_mtime(config.TASKS_FILE)
-    if _cache['tasks']['data'] is not None and current_mtime == _cache['tasks']['mtime']:
+    now = time.time()
+    if _cache['tasks']['data'] is not None and (now - _cache['tasks'].get('scan_time', 0)) < config.CACHE_TTL:
         return _cache['tasks']['projects'], _cache['tasks']['data']
 
-    projects, raw_tasks, _ = task_parser.load_tasks_file(config.TASKS_FILE)
+    # Load registered projects from root file (for registry + discovery seed)
+    try:
+        root_projects, _, _ = task_parser.load_tasks_file(config.TASKS_FILE)
+    except Exception:
+        root_projects = {}
 
-    # Auto-discover ops-structured folders and merge with registered projects
+    # Auto-discover ops-structured folders and merge
     scan_depth = _settings.get('scan_depth', 2)
-    projects = activity_parser.discover_projects(config.VAULT_PATH, projects, scan_depth=scan_depth)
+    projects = activity_parser.discover_projects(config.VAULT_PATH, root_projects, scan_depth=scan_depth)
+
+    # Scan all _tasks.yaml files across the vault
+    _, raw_tasks = task_parser.scan_tasks(config.VAULT_PATH, projects)
 
     # Apply settings overrides (enabled/shared_view) on top of discovered projects
     settings_projects = _settings.get('projects', {})
@@ -77,7 +84,7 @@ def _get_tasks_cached(today=None):
     enriched = [task_parser.enrich_task(t, today or date.today()) for t in raw_tasks]
     _cache['tasks']['projects'] = projects
     _cache['tasks']['data'] = enriched
-    _cache['tasks']['mtime'] = current_mtime
+    _cache['tasks']['scan_time'] = now
     return projects, enriched
 
 
@@ -119,7 +126,7 @@ def _get_insights_cached(projects):
 
 def _invalidate_cache():
     """Force cache invalidation."""
-    _cache['tasks']['mtime'] = 0
+    _cache['tasks']['scan_time'] = 0
     _cache['tasks']['data'] = None
     _cache['history']['mtime'] = 0
     _cache['history']['data'] = None
@@ -134,11 +141,16 @@ def _invalidate_cache():
 # ---------------------------------------------------------------------------
 
 def _filter_tasks(tasks, project=None, include_private=False):
-    """Filter tasks by project and privacy."""
+    """Filter tasks by project and privacy.  Uses _project (derived) field for matching.
+
+    When a specific project is selected (not 'all'), private tasks within that
+    project are always shown -- the user explicitly chose to look at it.
+    """
     result = tasks
-    if project and project != 'all':
-        result = [t for t in result if t.get('project') == project]
-    if not include_private:
+    explicit_project = project and project != 'all'
+    if explicit_project:
+        result = [t for t in result if t.get('_project') == project or t.get('project') == project]
+    if not include_private and not explicit_project:
         result = [t for t in result if not t.get('private', False)]
     return result
 
@@ -181,6 +193,10 @@ def _serialize_task(t):
     # Serialize note dates
     notes = result.get('notes') or []
     result['notes'] = notes
+    # Ensure distributed task fields are present
+    result.setdefault('_source_file', '')
+    result.setdefault('_project', result.get('project', 'unknown'))
+    result.setdefault('_display_id', '#{}'.format(result.get('id', '?')))
     return result
 
 
@@ -582,6 +598,8 @@ def api_insights():
 
     type_counts = insights_parser.aggregate_type_counts(filtered)
     monthly = insights_parser.aggregate_monthly_counts(filtered)
+    tag_counts = insights_parser.aggregate_tag_counts(filtered)
+    type_tag_matrix = insights_parser.aggregate_type_tag_matrix(filtered)
 
     # Count this month
     today = date.today()
@@ -594,6 +612,8 @@ def api_insights():
     return jsonify({
         'insights': [insights_parser.serialize_insight(i) for i in filtered],
         'type_counts': type_counts,
+        'tag_counts': tag_counts,
+        'type_tag_matrix': type_tag_matrix,
         'monthly': monthly,
         'total': len(filtered),
         'this_month': this_month_count,
