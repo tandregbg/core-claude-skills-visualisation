@@ -216,35 +216,76 @@
 
     function renderTasks(tasks) {
         const container = document.getElementById('tasks-panel-content');
-        const title = document.getElementById('tasks-panel-title');
+        const titleEl = document.getElementById('tasks-panel-title');
 
-        // Filter to open tasks
         const open = tasks.filter(t => t.status !== 'completed' && t.status !== 'done');
-        title.textContent = `Tasks (${open.length})`;
+        titleEl.textContent = `Tasks (${open.length})`;
 
         if (open.length === 0) {
             container.innerHTML = '<p class="empty-state">No open tasks</p>';
             return;
         }
 
-        container.innerHTML = open.map(t => {
-            const id = t._display_id || `#${t.id}`;
-            const title = escapeHtml(t.title || t.task || '');
-            const priority = t.priority || '';
-            const priorityClass = priority ? ` task-panel-priority-${priority}` : '';
-            const status = t.status || '';
-            const due = t.due_date || '';
-            const dueHtml = due ? `<span class="task-panel-due">${due}</span>` : '';
-            return `<div class="task-panel-item${priorityClass}">
-                <div class="task-panel-item-header">
-                    <span class="task-panel-id">${id}</span>
-                    <span class="task-panel-status">${status}</span>
-                </div>
-                <div class="task-panel-title">${title}</div>
-                <div class="task-panel-meta">${dueHtml}</div>
-            </div>`;
-        }).join('');
+        // Sort by priority then status
+        const prioOrder = { P0: 0, P1: 1, P2: 2, P3: 3 };
+        const statusOrder = { in_progress: 0, blocked: 1, pending: 2 };
+        open.sort((a, b) => {
+            const ps = (prioOrder[a.priority] || 9) - (prioOrder[b.priority] || 9);
+            if (ps !== 0) return ps;
+            return (statusOrder[a.status] || 9) - (statusOrder[b.status] || 9);
+        });
+
+        let html = '<table class="tasks-inline-table"><thead><tr>';
+        html += '<th></th><th>ID</th><th>Task</th><th>Priority</th><th>Status</th><th>Due</th><th>Tags</th>';
+        html += '</tr></thead><tbody>';
+
+        for (const t of open) {
+            const taskTitle = escapeHtml(t.title || t.task || '');
+            const dueStr = t.due_display || t.due_date || '';
+            const tags = (t.tags || []).join(', ');
+            const overdueClass = t.is_overdue ? ' overdue-text' : '';
+            const sourceFile = escapeAttr(t._source_file || '');
+            html += `<tr>
+                <td><button class="task-done-btn" onclick="projCompleteTask(event, ${t.id}, '${sourceFile}')" title="Mark as done">&#10003;</button></td>
+                <td><a href="/tasks/${t.id}" style="color:inherit;text-decoration:none;">#${t.id}</a></td>
+                <td style="max-width:400px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><a href="/tasks/${t.id}" style="color:inherit;text-decoration:none;">${taskTitle}</a></td>
+                <td><span class="priority-badge priority-${(t.priority || 'p3').toLowerCase()}">${escapeHtml(t.priority || '')}</span></td>
+                <td><span class="task-panel-status task-panel-status-${t.status}">${escapeHtml(t.status || '')}</span></td>
+                <td class="${overdueClass}" style="white-space:nowrap;">${escapeHtml(dueStr)}</td>
+                <td style="font-size:11px;color:var(--cs-on-surface-tertiary);">${escapeHtml(tags)}</td>
+            </tr>`;
+        }
+
+        html += '</tbody></table>';
+        container.innerHTML = html;
     }
+
+    window.projCompleteTask = async function(event, taskId, sourceFile) {
+        event.preventDefault();
+        event.stopPropagation();
+        if (!confirm(`Mark task #${taskId} as done?`)) return;
+
+        const btn = event.target;
+        btn.disabled = true;
+
+        try {
+            const res = await fetch(`/api/tasks/${taskId}/complete`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ source_file: sourceFile }),
+            });
+            const data = await res.json();
+            if (res.ok && data.status === 'ok') {
+                showDetail(currentProject);
+            } else {
+                alert(data.error || 'Failed to complete task');
+                btn.disabled = false;
+            }
+        } catch (err) {
+            alert('Failed to complete task: ' + err.message);
+            btn.disabled = false;
+        }
+    };
 
     // -----------------------------------------------------------------------
     // Content preview

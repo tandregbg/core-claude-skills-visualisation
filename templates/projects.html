@@ -20,7 +20,7 @@
         <span class="project-vault-path" id="project-vault-path"></span>
     </div>
 
-    <div class="documents-layout">
+    <div class="documents-layout documents-layout-2col">
         <!-- Left: project nav -->
         <div class="project-nav" id="project-nav">
             <div class="project-nav-section">
@@ -45,24 +45,25 @@
             </div>
         </div>
 
-        <!-- Center: content preview -->
-        <div class="recent-preview">
-            <div id="preview-header" class="recent-preview-header">
-                <span class="preview-placeholder">Select a file to preview</span>
-                <a id="preview-obsidian-link" href="#" class="preview-link hidden">Open in Obsidian</a>
+        <!-- Right: content + tasks stacked -->
+        <div class="content-stack">
+            <div class="recent-preview">
+                <div id="preview-header" class="recent-preview-header">
+                    <span class="preview-placeholder">Select a file to preview</span>
+                    <a id="preview-obsidian-link" href="#" class="preview-link hidden">Open in Obsidian</a>
+                </div>
+                <div id="preview-content" class="recent-preview-content prose">
+                    <p class="preview-empty">Select a file from the left to preview</p>
+                </div>
             </div>
-            <div id="preview-content" class="recent-preview-content prose">
-                <p class="preview-empty">Select a file from the left to preview</p>
-            </div>
-        </div>
 
-        <!-- Right: tasks panel -->
-        <div class="documents-tasks" id="tasks-panel">
-            <div class="documents-tasks-header">
-                <span id="tasks-panel-title">Tasks</span>
-            </div>
-            <div id="tasks-panel-content">
-                <p class="empty-state">Loading tasks...</p>
+            <div class="card" id="tasks-table-card">
+                <div class="card-header">
+                    <span id="tasks-panel-title">Tasks</span>
+                </div>
+                <div id="tasks-panel-content">
+                    <p class="empty-state">Loading tasks...</p>
+                </div>
             </div>
         </div>
     </div>

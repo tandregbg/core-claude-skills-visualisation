@@ -676,34 +676,79 @@
     padding-top: 80px;
 }
 
-/* Tasks panel (right column) */
-.documents-tasks {
-    width: 340px;
-    min-width: 300px;
-    flex-shrink: 0;
-    background: var(--cs-elevation-solid-0);
-    border-radius: var(--cs-border-radius-xs);
-    border: 1px solid var(--cs-elevation-solid-3);
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
+/* Two-column layout variant (nav + stacked content) */
+.documents-layout-2col .recent-preview {
+    flex: none;
 }
 
-.documents-tasks-header {
+.content-stack {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: var(--cs-spacing-lg);
+    overflow-y: auto;
+    min-width: 0;
+}
+
+.content-stack .recent-preview {
+    flex-shrink: 0;
+    max-height: 60vh;
+}
+
+.content-stack #tasks-table-card {
+    flex-shrink: 0;
+}
+
+/* Tasks table in stacked layout */
+.tasks-inline-table {
+    width: 100%;
+    font-size: var(--cs-font-size-body-sm);
+}
+
+.tasks-inline-table th {
+    text-align: left;
+    font-weight: var(--cs-font-weight-medium);
+    color: var(--cs-on-surface-secondary);
+    padding: var(--cs-spacing-xs) var(--cs-spacing-sm);
+    border-bottom: 1px solid var(--cs-elevation-solid-3);
+    font-size: var(--cs-font-size-body-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.tasks-inline-table td {
+    padding: var(--cs-spacing-xs) var(--cs-spacing-sm);
+    border-bottom: 1px solid var(--cs-elevation-solid-2);
+    vertical-align: middle;
+}
+
+.tasks-inline-table tr:hover {
+    background: var(--cs-elevation-solid-2);
+}
+
+.tasks-inline-table .task-done-btn {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: 1.5px solid var(--cs-on-surface-tertiary);
+    background: transparent;
+    color: var(--cs-on-surface-tertiary);
+    font-size: 12px;
+    cursor: pointer;
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    padding: var(--cs-spacing-md) var(--cs-spacing-xl);
-    border-bottom: 1px solid var(--cs-elevation-solid-3);
-    background: var(--cs-elevation-solid-2);
-    flex-shrink: 0;
-    font-weight: var(--cs-font-weight-medium);
-    font-size: var(--cs-font-size-body-md);
+    justify-content: center;
+    padding: 0;
+    transition: all 0.15s;
+}
+
+.tasks-inline-table .task-done-btn:hover {
+    border-color: var(--cs-status-success);
+    color: var(--cs-status-success);
+    background: var(--cs-status-success-bg, rgba(34, 197, 94, 0.1));
 }
 
 #tasks-panel-content {
-    flex: 1;
-    overflow-y: auto;
     padding: var(--cs-spacing-sm);
 }
 

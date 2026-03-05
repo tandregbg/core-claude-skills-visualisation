@@ -30,31 +30,32 @@
 <!-- Day badges -->
 <div id="day-badges" class="day-badges"></div>
 
-<!-- Three-column layout: file list + content preview + tasks -->
-<div class="documents-layout">
+<!-- Two-column layout: file list + content/tasks stacked -->
+<div class="documents-layout documents-layout-2col">
     <!-- Left: file list grouped by day -->
     <div id="file-list" class="recent-file-list">
         <p class="empty-state">Loading...</p>
     </div>
 
-    <!-- Center: content preview -->
-    <div class="recent-preview">
-        <div id="preview-header" class="recent-preview-header">
-            <span class="preview-placeholder">Select a file to preview</span>
-            <a id="preview-obsidian-link" href="#" class="preview-link hidden">Open in Obsidian</a>
+    <!-- Right: content + tasks stacked -->
+    <div class="content-stack">
+        <div class="recent-preview">
+            <div id="preview-header" class="recent-preview-header">
+                <span class="preview-placeholder">Select a file to preview</span>
+                <a id="preview-obsidian-link" href="#" class="preview-link hidden">Open in Obsidian</a>
+            </div>
+            <div id="preview-content" class="recent-preview-content prose">
+                <p class="preview-empty">Click a file on the left to see its content here</p>
+            </div>
         </div>
-        <div id="preview-content" class="recent-preview-content prose">
-            <p class="preview-empty">Click a file on the left to see its content here</p>
-        </div>
-    </div>
 
-    <!-- Right: project tasks -->
-    <div class="documents-tasks" id="tasks-panel">
-        <div class="documents-tasks-header">
-            <span id="tasks-panel-title">Tasks</span>
-        </div>
-        <div id="tasks-panel-content">
-            <p class="empty-state">Select a document to see related tasks</p>
+        <div class="card" id="tasks-table-card">
+            <div class="card-header">
+                <span id="tasks-panel-title">Tasks</span>
+            </div>
+            <div id="tasks-panel-content">
+                <p class="empty-state">Select a document to see related tasks</p>
+            </div>
         </div>
     </div>
 </div>
