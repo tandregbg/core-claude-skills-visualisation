@@ -160,7 +160,9 @@ def _filter_tasks_by_folder(tasks, document_path):
 
     Given a document path like '_contacts/prashant/260305-file.md', finds tasks
     whose _source_file directory is the best (deepest) ancestor match.
-    Falls back to all tasks matching the document's directory if no _source_file match.
+
+    When no _tasks.yaml ancestor is found (e.g. contact folders without tasks),
+    falls back to searching tasks whose title or tags mention the folder name.
     """
     import posixpath
     doc_dir = posixpath.dirname(document_path.replace(os.sep, '/'))
@@ -179,7 +181,8 @@ def _filter_tasks_by_folder(tasks, document_path):
     best_match = None
     best_len = -1
     for src_dir in source_dirs:
-        # src_dir is ancestor if doc_dir starts with src_dir
+        if not src_dir:  # skip root _tasks.yaml (empty dirname)
+            continue
         if doc_dir == src_dir or doc_dir.startswith(src_dir + '/'):
             if len(src_dir) > best_len:
                 best_match = src_dir
@@ -188,8 +191,31 @@ def _filter_tasks_by_folder(tasks, document_path):
     if best_match is not None:
         return source_dirs[best_match]
 
-    # No ancestor match -- fall back to empty
-    return []
+    # No _tasks.yaml ancestor found -- search by folder name in task content
+    # Extract the context name from path (e.g. 'tim-hansen' from '_contacts/tim-hansen')
+    folder_name = posixpath.basename(doc_dir)
+    if not folder_name:
+        return []
+
+    # Search for tasks mentioning this name in title, tags, or notes
+    name_lower = folder_name.lower().replace('-', ' ').replace('_', ' ')
+    name_parts = name_lower.split()
+
+    matched = []
+    for t in tasks:
+        title = (t.get('title') or t.get('task') or '').lower()
+        tags = [tag.lower() for tag in (t.get('tags') or [])]
+        notes_text = ' '.join(
+            (n.get('text', '') if isinstance(n, dict) else str(n))
+            for n in (t.get('notes') or [])
+        ).lower()
+
+        # Match if all name parts appear in title, tags, or notes
+        searchable = f"{title} {' '.join(tags)} {notes_text}"
+        if all(part in searchable for part in name_parts):
+            matched.append(t)
+
+    return matched
 
 
 def _filter_activity(activity_data, project=None, include_private_folders=False, projects_config=None):
