@@ -198,6 +198,30 @@ def aggregate_tag_counts(insights):
     return counts
 
 
+def aggregate_context_counts(insights):
+    """Count insights per context (contact/project folder)."""
+    counts = {}
+    for i in insights:
+        ctx = i.get('context', i.get('project', 'unknown'))
+        counts[ctx] = counts.get(ctx, 0) + 1
+    return counts
+
+
+def aggregate_type_context_matrix(insights):
+    """Build a type x context count matrix.
+
+    Returns {type: {context: count}} for all types and contexts present.
+    """
+    matrix = {}
+    for i in insights:
+        t = i.get('type', 'other')
+        ctx = i.get('context', i.get('project', 'unknown'))
+        if t not in matrix:
+            matrix[t] = {}
+        matrix[t][ctx] = matrix[t].get(ctx, 0) + 1
+    return matrix
+
+
 def aggregate_type_tag_matrix(insights):
     """Build a type x tag count matrix.
 

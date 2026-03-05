@@ -927,6 +927,7 @@
     border-collapse: collapse;
     font-size: 12px;
     width: 100%;
+    table-layout: fixed;
 }
 
 .pivot-table th,
@@ -941,7 +942,6 @@
     font-weight: var(--cs-font-weight-medium);
     color: var(--cs-on-surface-secondary);
     white-space: nowrap;
-    max-width: 80px;
     overflow: hidden;
     text-overflow: ellipsis;
     background: var(--cs-elevation-solid-2);
@@ -952,11 +952,11 @@
     white-space: nowrap;
     background: var(--cs-elevation-solid-0);
     border-right: 2px solid var(--cs-elevation-solid-4);
+    width: 110px;
 }
 
 .pivot-cell {
     cursor: pointer;
-    min-width: 36px;
     transition: opacity 0.12s ease;
     position: relative;
 }
@@ -965,6 +965,12 @@
     outline: 2px solid var(--cs-on-surface-primary);
     outline-offset: -2px;
     z-index: 1;
+}
+
+.pivot-cell-selected {
+    outline: 3px solid var(--cs-on-surface-primary);
+    outline-offset: -3px;
+    z-index: 2;
 }
 
 .pivot-cell-inner {

@@ -4,27 +4,6 @@
 {% block breadcrumb %}Insights{% endblock %}
 
 {% block content %}
-<h1 class="page-title">Insights</h1>
-
-<!-- Stat cards -->
-<div class="stats-grid">
-    <div class="stat-card">
-        <div class="stat-label">Total Insights</div>
-        <div class="stat-value" id="stat-total">--</div>
-    </div>
-    <div class="stat-card" id="stat-top1-card">
-        <div class="stat-label" id="stat-top1-label">--</div>
-        <div class="stat-value" id="stat-top1-value">--</div>
-    </div>
-    <div class="stat-card" id="stat-top2-card">
-        <div class="stat-label" id="stat-top2-label">--</div>
-        <div class="stat-value" id="stat-top2-value">--</div>
-    </div>
-    <div class="stat-card success">
-        <div class="stat-label">This Month</div>
-        <div class="stat-value" id="stat-this-month">--</div>
-    </div>
-</div>
 
 <!-- Type toggle badges -->
 <div class="filter-badges-row">
@@ -40,49 +19,35 @@
     </select>
 </div>
 
-<!-- Tag cloud -->
-<div class="card" id="tag-cloud-card">
+<!-- Context cloud -->
+<div class="card" id="context-cloud-card">
     <div class="card-header">
-        <span>Tags</span>
-        <button class="btn-sm" id="tag-show-all" style="display:none;">Show all</button>
+        <span>Contexts</span>
+        <button class="btn-sm" id="context-show-all" style="display:none;">Show all</button>
     </div>
-    <div class="tag-cloud" id="tag-cloud">
+    <div class="tag-cloud" id="context-cloud">
         <!-- Rendered by JS -->
     </div>
 </div>
 
-<!-- Type x Tag pivot heatmap -->
+<!-- Type x Context pivot heatmap -->
 <div class="card" id="pivot-card">
-    <div class="card-header">Type x Tag</div>
+    <div class="card-header">
+        <span>Type x Context</span>
+        <span id="insights-count" class="file-count-label"></span>
+    </div>
     <div class="pivot-wrapper" id="type-tag-pivot">
         <!-- Rendered by JS -->
     </div>
 </div>
 
-<!-- Charts row -->
-<div class="charts-row">
-    <div class="card">
-        <div class="card-header">Insights Over Time</div>
-        <div class="chart-container">
-            <canvas id="insights-timeline-chart"></canvas>
-        </div>
-    </div>
-    <div class="card">
-        <div class="card-header">Type Distribution</div>
-        <div class="chart-container">
-            <canvas id="insights-type-chart"></canvas>
-        </div>
-    </div>
-</div>
-
-<!-- Insights list -->
-<div class="card">
+<!-- Insights list (shown when pivot cell clicked) -->
+<div class="card" id="insights-list-card" style="display:none;">
     <div class="card-header">
-        <span>Insights</span>
-        <span id="insights-count" class="file-count-label"></span>
+        <span id="insights-list-title">Insights</span>
+        <button class="btn-sm" id="insights-list-close">Clear filter</button>
     </div>
     <div id="insights-list">
-        <p class="empty-state">Loading...</p>
     </div>
 </div>
 {% endblock %}

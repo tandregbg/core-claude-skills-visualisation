@@ -599,6 +599,8 @@ def api_insights():
     type_counts = insights_parser.aggregate_type_counts(filtered)
     monthly = insights_parser.aggregate_monthly_counts(filtered)
     tag_counts = insights_parser.aggregate_tag_counts(filtered)
+    context_counts = insights_parser.aggregate_context_counts(filtered)
+    type_context_matrix = insights_parser.aggregate_type_context_matrix(filtered)
     type_tag_matrix = insights_parser.aggregate_type_tag_matrix(filtered)
 
     # Count this month
@@ -613,6 +615,8 @@ def api_insights():
         'insights': [insights_parser.serialize_insight(i) for i in filtered],
         'type_counts': type_counts,
         'tag_counts': tag_counts,
+        'context_counts': context_counts,
+        'type_context_matrix': type_context_matrix,
         'type_tag_matrix': type_tag_matrix,
         'monthly': monthly,
         'total': len(filtered),

@@ -1,9 +1,6 @@
 /**
- * insights.js -- Insights page: toggle badges, tag cloud, pivot heatmap, charts, list
+ * insights.js -- Insights page: toggle badges, context cloud, pivot heatmap, detail table
  */
-
-let timelineChartInstance = null;
-let typeChartInstance = null;
 
 const INSIGHT_TYPES = ['decision', 'preference', 'learning', 'opportunity', 'pattern'];
 
@@ -17,10 +14,12 @@ const INSIGHT_TYPE_COLORS = {
 
 // State
 let activeTypes = new Set(INSIGHT_TYPES);
-let activeTags = new Set();
-let allTagCounts = {};
-let showAllTags = false;
-const TOP_TAGS_COUNT = 15;
+let activeContexts = new Set();
+let allContextCounts = {};
+let lastInsights = [];
+let showAllContexts = false;
+let pivotSelection = null; // {type, context} or null
+const TOP_CONTEXTS_COUNT = 15;
 const PIVOT_MAX_COLS = 15;
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -29,30 +28,25 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('folder-change', loadInsights);
     window.addEventListener('privacy-change', loadInsights);
     document.getElementById('status-filter').addEventListener('change', loadInsights);
-    document.getElementById('tag-show-all').addEventListener('click', () => {
-        showAllTags = !showAllTags;
-        renderTagCloud(allTagCounts);
+    document.getElementById('context-show-all').addEventListener('click', () => {
+        showAllContexts = !showAllContexts;
+        renderContextCloud(allContextCounts);
+    });
+    document.getElementById('insights-list-close').addEventListener('click', () => {
+        pivotSelection = null;
+        document.getElementById('insights-list-card').style.display = 'none';
+        renderPivotHighlight();
     });
 });
-
-function debounce(fn, ms) {
-    let timer;
-    return function () {
-        clearTimeout(timer);
-        timer = setTimeout(fn, ms);
-    };
-}
 
 async function loadInsights() {
     const params = new URLSearchParams();
     const folder = currentFolder;
     if (folder && folder !== 'all') params.set('project', folder);
 
-    // Send active types as comma-separated (only if not all active)
     if (activeTypes.size < INSIGHT_TYPES.length && activeTypes.size > 0) {
         params.set('type', Array.from(activeTypes).join(','));
     } else if (activeTypes.size === 0) {
-        // All deactivated -- show nothing
         renderEmpty();
         return;
     }
@@ -66,25 +60,24 @@ async function loadInsights() {
 
         let insights = data.insights;
 
-        // Client-side tag filtering (AND logic)
-        if (activeTags.size > 0) {
+        // Client-side context filtering (OR logic -- show insights from any selected context)
+        if (activeContexts.size > 0) {
             insights = insights.filter(i =>
-                Array.from(activeTags).every(tag =>
-                    (i.tags || []).includes(tag)
-                )
+                activeContexts.has(i.context || i.project)
             );
         }
 
-        // Store tag counts for cloud rendering
-        allTagCounts = data.tag_counts || {};
+        lastInsights = insights;
+        allContextCounts = data.context_counts || {};
 
         renderTypeBadges(data.type_counts || {});
-        renderTagCloud(allTagCounts);
-        renderPivotTable(data.type_tag_matrix || {}, allTagCounts);
-        renderStats(data, insights.length);
-        renderTimelineChart(data.monthly);
-        renderTypeChart(data.type_counts);
-        renderInsightsList(insights);
+        renderContextCloud(allContextCounts);
+        renderPivotTable(data.type_context_matrix || {}, allContextCounts);
+        renderInsightsCount(insights.length);
+
+        if (pivotSelection) {
+            showPivotDetail(pivotSelection.type, pivotSelection.context);
+        }
     } catch (err) {
         console.error('Failed to load insights:', err);
     }
@@ -92,18 +85,15 @@ async function loadInsights() {
 
 function renderEmpty() {
     renderTypeBadges({});
-    renderTagCloud({});
+    renderContextCloud({});
     renderPivotTable({}, {});
-    document.getElementById('stat-total').textContent = '0';
-    document.getElementById('stat-top1-label').textContent = '--';
-    document.getElementById('stat-top1-value').textContent = '0';
-    document.getElementById('stat-top2-label').textContent = '--';
-    document.getElementById('stat-top2-value').textContent = '0';
-    document.getElementById('stat-this-month').textContent = '0';
-    document.getElementById('insights-list').innerHTML = '<p class="empty-state">No insights found</p>';
-    document.getElementById('insights-count').textContent = '';
-    if (timelineChartInstance) { timelineChartInstance.destroy(); timelineChartInstance = null; }
-    if (typeChartInstance) { typeChartInstance.destroy(); typeChartInstance = null; }
+    renderInsightsCount(0);
+    document.getElementById('insights-list-card').style.display = 'none';
+}
+
+function renderInsightsCount(count) {
+    const el = document.getElementById('insights-count');
+    if (el) el.textContent = count + ' insight' + (count !== 1 ? 's' : '');
 }
 
 // -- Type toggle badges --
@@ -134,97 +124,99 @@ window.toggleType = function(type) {
     } else {
         activeTypes.add(type);
     }
+    pivotSelection = null;
+    document.getElementById('insights-list-card').style.display = 'none';
     loadInsights();
 };
 
-// -- Tag cloud --
+// -- Context cloud --
 
-function renderTagCloud(tagCounts) {
-    const container = document.getElementById('tag-cloud');
-    const showAllBtn = document.getElementById('tag-show-all');
+function renderContextCloud(contextCounts) {
+    const container = document.getElementById('context-cloud');
+    const showAllBtn = document.getElementById('context-show-all');
 
-    const sorted = Object.entries(tagCounts).sort((a, b) => b[1] - a[1]);
+    const sorted = Object.entries(contextCounts).sort((a, b) => b[1] - a[1]);
 
     if (sorted.length === 0) {
-        container.innerHTML = '<span class="empty-state" style="padding:8px 0;">No tags</span>';
+        container.innerHTML = '<span class="empty-state" style="padding:8px 0;">No contexts</span>';
         showAllBtn.style.display = 'none';
         return;
     }
 
-    const visible = showAllTags ? sorted : sorted.slice(0, TOP_TAGS_COUNT);
-    const hasMore = sorted.length > TOP_TAGS_COUNT;
+    const visible = showAllContexts ? sorted : sorted.slice(0, TOP_CONTEXTS_COUNT);
+    const hasMore = sorted.length > TOP_CONTEXTS_COUNT;
 
     showAllBtn.style.display = hasMore ? 'inline-block' : 'none';
-    showAllBtn.textContent = showAllTags ? 'Show less' : `Show all (${sorted.length})`;
+    showAllBtn.textContent = showAllContexts ? 'Show less' : `Show all (${sorted.length})`;
 
-    container.innerHTML = visible.map(([tag, count]) => {
-        const isActive = activeTags.has(tag);
+    container.innerHTML = visible.map(([ctx, count]) => {
+        const isActive = activeContexts.has(ctx);
         return `<button class="tag-cloud-pill${isActive ? ' active' : ''}"
-                    onclick="toggleTag('${escapeHtml(tag)}')"
+                    onclick="toggleContext('${escapeHtml(ctx)}')"
                     title="${count} insight${count !== 1 ? 's' : ''}">
-                    ${escapeHtml(tag)}
+                    ${escapeHtml(ctx)}
                     <span class="tag-cloud-count">${count}</span>
                 </button>`;
     }).join('');
 }
 
-window.toggleTag = function(tag) {
-    if (activeTags.has(tag)) {
-        activeTags.delete(tag);
+window.toggleContext = function(ctx) {
+    if (activeContexts.has(ctx)) {
+        activeContexts.delete(ctx);
     } else {
-        activeTags.add(tag);
+        activeContexts.add(ctx);
     }
+    pivotSelection = null;
+    document.getElementById('insights-list-card').style.display = 'none';
     loadInsights();
 };
 
-// -- Pivot heatmap --
+// -- Pivot heatmap (type x context) --
 
-function renderPivotTable(matrix, tagCounts) {
+function renderPivotTable(matrix, contextCounts) {
     const container = document.getElementById('type-tag-pivot');
 
-    // Get top tags by frequency
-    const topTags = Object.entries(tagCounts)
+    const topContexts = Object.entries(contextCounts)
         .sort((a, b) => b[1] - a[1])
         .slice(0, PIVOT_MAX_COLS)
         .map(e => e[0]);
 
-    if (topTags.length === 0) {
+    if (topContexts.length === 0) {
         container.innerHTML = '<p class="empty-state">No data for pivot</p>';
         return;
     }
 
-    // Only show types that are currently active
     const visibleTypes = INSIGHT_TYPES.filter(t => activeTypes.has(t));
 
-    // Find max value for intensity scaling
     let maxVal = 0;
     for (const type of visibleTypes) {
-        for (const tag of topTags) {
-            const val = (matrix[type] || {})[tag] || 0;
+        for (const ctx of topContexts) {
+            const val = (matrix[type] || {})[ctx] || 0;
             if (val > maxVal) maxVal = val;
         }
     }
 
-    let html = '<table class="pivot-table"><thead><tr><th></th>';
-    html += topTags.map(tag => `<th class="pivot-col-header" title="${escapeHtml(tag)}">${escapeHtml(truncate(tag, 12))}</th>`).join('');
+    let html = '<table class="pivot-table"><thead><tr><th class="pivot-row-header"></th>';
+    html += topContexts.map(ctx => `<th class="pivot-col-header" title="${escapeHtml(ctx)}">${escapeHtml(ctx)}</th>`).join('');
     html += '</tr></thead><tbody>';
 
     for (const type of visibleTypes) {
         const colors = INSIGHT_TYPE_COLORS[type];
         html += `<tr><td class="pivot-row-header"><span class="insight-badge insight-${type}">${type}</span></td>`;
-        for (const tag of topTags) {
-            const val = (matrix[type] || {})[tag] || 0;
+        for (const ctx of topContexts) {
+            const val = (matrix[type] || {})[ctx] || 0;
             const opacity = maxVal > 0 ? Math.max(0.08, val / maxVal) : 0;
+            const isSelected = pivotSelection && pivotSelection.type === type && pivotSelection.context === ctx;
             const cellStyle = val > 0
-                ? `background:${colors.chart};opacity:1;`
+                ? `background:${colors.chart};`
                 : '';
             const innerStyle = val > 0
                 ? `background:rgba(255,255,255,${1 - opacity * 0.85});`
                 : '';
-            html += `<td class="pivot-cell${val > 0 ? ' pivot-cell-filled' : ''}"
+            html += `<td class="pivot-cell${val > 0 ? ' pivot-cell-filled' : ''}${isSelected ? ' pivot-cell-selected' : ''}"
                         style="${cellStyle}"
-                        onclick="pivotClick('${type}','${escapeHtml(tag)}')"
-                        title="${type} + ${tag}: ${val}">
+                        onclick="pivotClick('${type}','${escapeAttr(ctx)}')"
+                        title="${type} + ${ctx}: ${val}">
                         <span class="pivot-cell-inner" style="${innerStyle}">${val || ''}</span>
                     </td>`;
         }
@@ -235,163 +227,54 @@ function renderPivotTable(matrix, tagCounts) {
     container.innerHTML = html;
 }
 
-window.pivotClick = function(type, tag) {
-    // Set type filter to only this type
-    activeTypes.clear();
-    activeTypes.add(type);
+function escapeAttr(s) {
+    return s.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+}
 
-    // Toggle this tag
-    activeTags.clear();
-    activeTags.add(tag);
+function renderPivotHighlight() {
+    document.querySelectorAll('.pivot-cell').forEach(cell => {
+        cell.classList.remove('pivot-cell-selected');
+    });
+}
 
-    loadInsights();
+window.pivotClick = function(type, ctx) {
+    // If clicking the same cell, deselect
+    if (pivotSelection && pivotSelection.type === type && pivotSelection.context === ctx) {
+        pivotSelection = null;
+        document.getElementById('insights-list-card').style.display = 'none';
+        renderPivotHighlight();
+        return;
+    }
+
+    pivotSelection = { type, context: ctx };
+    showPivotDetail(type, ctx);
+
+    // Update highlight
+    document.querySelectorAll('.pivot-cell').forEach(cell => {
+        cell.classList.remove('pivot-cell-selected');
+    });
+    // Match by title prefix
+    const prefix = `${type} + ${ctx}:`;
+    document.querySelectorAll('.pivot-cell').forEach(cell => {
+        if (cell.title.startsWith(prefix)) {
+            cell.classList.add('pivot-cell-selected');
+        }
+    });
 };
 
-function truncate(str, max) {
-    return str.length > max ? str.slice(0, max - 1) + '\u2026' : str;
-}
+function showPivotDetail(type, ctx) {
+    const filtered = lastInsights.filter(i =>
+        i.type === type && (i.context || i.project) === ctx
+    );
 
-// -- Stats --
+    const card = document.getElementById('insights-list-card');
+    const titleEl = document.getElementById('insights-list-title');
 
-function renderStats(data, filteredCount) {
-    document.getElementById('stat-total').textContent = filteredCount;
-    document.getElementById('stat-this-month').textContent = data.this_month || 0;
+    titleEl.innerHTML = `<span class="insight-badge insight-${type}">${type}</span> + <span class="project-badge">${escapeHtml(ctx)}</span> <span class="file-count-label">${filtered.length} insight${filtered.length !== 1 ? 's' : ''}</span>`;
 
-    // Dynamic top-2 types
-    const typeCounts = data.type_counts || {};
-    const sorted = Object.entries(typeCounts).sort((a, b) => b[1] - a[1]);
-
-    const top1 = sorted[0];
-    const top2 = sorted[1];
-
-    const top1Card = document.getElementById('stat-top1-card');
-    const top2Card = document.getElementById('stat-top2-card');
-
-    if (top1) {
-        const colors = INSIGHT_TYPE_COLORS[top1[0]] || INSIGHT_TYPE_COLORS.pattern;
-        document.getElementById('stat-top1-label').textContent = top1[0].charAt(0).toUpperCase() + top1[0].slice(1) + 's';
-        document.getElementById('stat-top1-value').textContent = top1[1];
-        top1Card.style.borderLeftColor = colors.chart;
-    } else {
-        document.getElementById('stat-top1-label').textContent = '--';
-        document.getElementById('stat-top1-value').textContent = '0';
-    }
-
-    if (top2) {
-        const colors = INSIGHT_TYPE_COLORS[top2[0]] || INSIGHT_TYPE_COLORS.pattern;
-        document.getElementById('stat-top2-label').textContent = top2[0].charAt(0).toUpperCase() + top2[0].slice(1) + 's';
-        document.getElementById('stat-top2-value').textContent = top2[1];
-        top2Card.style.borderLeftColor = colors.chart;
-    } else {
-        document.getElementById('stat-top2-label').textContent = '--';
-        document.getElementById('stat-top2-value').textContent = '0';
-    }
-
-    const countEl = document.getElementById('insights-count');
-    if (countEl) {
-        countEl.textContent = filteredCount + ' insight' + (filteredCount !== 1 ? 's' : '');
-    }
-}
-
-// -- Timeline chart --
-
-function renderTimelineChart(monthly) {
-    const ctx = document.getElementById('insights-timeline-chart');
-    if (!ctx) return;
-
-    if (timelineChartInstance) timelineChartInstance.destroy();
-
-    if (!monthly || monthly.length === 0) {
-        timelineChartInstance = null;
-        return;
-    }
-
-    const labels = monthly.map(m => m.month);
-
-    const allTypes = new Set();
-    monthly.forEach(m => Object.keys(m.counts).forEach(t => allTypes.add(t)));
-
-    const datasets = Array.from(allTypes)
-        .filter(t => activeTypes.has(t))
-        .map(type => {
-            const colors = INSIGHT_TYPE_COLORS[type] || INSIGHT_TYPE_COLORS.pattern;
-            return {
-                label: type,
-                data: monthly.map(m => m.counts[type] || 0),
-                backgroundColor: colors.chart,
-                borderRadius: 3,
-            };
-        });
-
-    timelineChartInstance = new Chart(ctx, {
-        type: 'bar',
-        data: { labels, datasets },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: 'bottom',
-                    labels: { boxWidth: 10, padding: 8, font: { size: 10 } }
-                }
-            },
-            scales: {
-                x: {
-                    stacked: true,
-                    ticks: { font: { size: 10 } },
-                    grid: { display: false }
-                },
-                y: {
-                    stacked: true,
-                    beginAtZero: true,
-                    ticks: { stepSize: 1, font: { size: 11 } },
-                    grid: { color: '#f3f4f6' }
-                }
-            }
-        }
-    });
-}
-
-// -- Type doughnut --
-
-function renderTypeChart(typeCounts) {
-    const ctx = document.getElementById('insights-type-chart');
-    if (!ctx) return;
-
-    if (typeChartInstance) typeChartInstance.destroy();
-
-    // Only show active types
-    const entries = Object.entries(typeCounts || {}).filter(([t]) => activeTypes.has(t));
-    if (entries.length === 0) {
-        typeChartInstance = null;
-        return;
-    }
-
-    const labels = entries.map(e => e[0]);
-    const data = entries.map(e => e[1]);
-    const colors = labels.map(l => (INSIGHT_TYPE_COLORS[l] || INSIGHT_TYPE_COLORS.pattern).chart);
-
-    typeChartInstance = new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-            labels,
-            datasets: [{
-                data,
-                backgroundColor: colors,
-                borderWidth: 0,
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: 'right',
-                    labels: { boxWidth: 10, padding: 8, font: { size: 10 } }
-                }
-            }
-        }
-    });
+    renderInsightsList(filtered);
+    card.style.display = 'block';
+    card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
 // -- Insights list --
@@ -406,14 +289,12 @@ function renderInsightsList(insights) {
     }
 
     container.innerHTML = '<table class="data-table"><thead><tr>' +
-        '<th>Type</th><th>Date</th><th>Summary</th><th>Context</th><th>Tags</th><th>Source</th>' +
+        '<th>Date</th><th>Summary</th><th>Tags</th><th>Source</th>' +
         '</tr></thead><tbody>' +
         insights.map(i => {
-            const typeClass = `insight-badge insight-${i.type}`;
-            const tags = (i.tags || []).map(t => {
-                const isActive = activeTags.has(t);
-                return `<span class="tag-badge${isActive ? ' tag-badge-active' : ''}" onclick="toggleTag('${escapeHtml(t)}')" style="cursor:pointer;">${escapeHtml(t)}</span>`;
-            }).join(' ');
+            const tags = (i.tags || []).map(t =>
+                `<span class="tag-badge">${escapeHtml(t)}</span>`
+            ).join(' ');
 
             const sourceLink = i.obsidian_link
                 ? `<a href="${escapeHtml(i.obsidian_link)}" class="detail-link" title="Open in Obsidian">${escapeHtml((i.source && i.source.file) || '')}</a>`
@@ -421,13 +302,11 @@ function renderInsightsList(insights) {
 
             return `
                 <tr>
-                    <td><span class="${typeClass}">${escapeHtml(i.type)}</span></td>
                     <td style="white-space: nowrap; font-variant-numeric: tabular-nums;">${escapeHtml(i.date)}</td>
                     <td>
                         <div class="insight-summary">${escapeHtml(i.summary)}</div>
                         ${i.rationale ? `<div class="insight-rationale">${escapeHtml(i.rationale)}</div>` : ''}
                     </td>
-                    <td><span class="project-badge project-${i.project}">${escapeHtml(i.context || i.project)}</span></td>
                     <td>${tags}</td>
                     <td style="font-size: 11px;">${sourceLink}</td>
                 </tr>
