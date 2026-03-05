@@ -22,7 +22,7 @@ _SETTINGS_DEFAULTS = {
     'llm': {
         'provider': 'ollama',
         'ollama_endpoint': 'http://192.168.11.169:11434',
-        'ollama_model': 'qwen3.5:35b',
+        'ollama_model': 'qwen3:30b',
         'anthropic_api_key': '',
         'anthropic_model': 'claude-sonnet-4-20250514',
         'openai_api_key': '',

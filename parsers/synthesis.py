@@ -13,17 +13,21 @@ import requests
 # ---------------------------------------------------------------------------
 
 def _call_ollama(endpoint, model, messages, timeout):
-    """Call Ollama via OpenAI-compatible API."""
-    url = f'{endpoint.rstrip("/")}/v1/chat/completions'
+    """Call Ollama via native /api/chat endpoint."""
+    url = f'{endpoint.rstrip("/")}/api/chat'
     payload = {
         'model': model,
         'messages': messages,
-        'temperature': 0.3,
+        'stream': False,
+        'think': False,
+        'options': {
+            'temperature': 0.3,
+        },
     }
     resp = requests.post(url, json=payload, timeout=timeout)
     resp.raise_for_status()
     data = resp.json()
-    return data['choices'][0]['message']['content']
+    return data['message']['content']
 
 
 def _call_anthropic(api_key, model, messages, timeout):
