@@ -345,7 +345,7 @@
     // Init
     // -----------------------------------------------------------------------
 
-    if (window.INITIAL_PROJECT) {
+    if (window.INITIAL_PROJECT && window.INITIAL_PROJECT !== 'null') {
         showDetail(window.INITIAL_PROJECT);
     } else {
         loadProjectList();

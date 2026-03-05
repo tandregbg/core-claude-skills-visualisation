@@ -73,7 +73,7 @@
 {% block scripts %}
 <script>
     // Pass project name from Flask route if navigating directly to detail
-    window.INITIAL_PROJECT = {{ project_name|default('null')|tojson }};
+    window.INITIAL_PROJECT = {{ project_name|tojson if project_name else 'null' }};
 </script>
 <script src="{{ url_for('static', filename='js/projects.js') }}?v={{ v }}"></script>
 {% endblock %}
