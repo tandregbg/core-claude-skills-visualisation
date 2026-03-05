@@ -518,32 +518,29 @@ def get_project_detail(vault_path, project_name, project_config, vault_name=None
                 })
     meetings.sort(key=lambda m: (m['date'], m['mtime']), reverse=True)
 
-    # Sub-projects: scan projects/ or _projects/ subfolder
+    # Sub-projects: show all subdirectories except meetings/moten (shown separately)
     sub_projects = []
-    projects_dir = os.path.join(full_folder, '_projects')
-    if not os.path.isdir(projects_dir):
-        projects_dir = os.path.join(full_folder, 'projects')
-    if os.path.isdir(projects_dir):
-        try:
-            for entry in sorted(os.listdir(projects_dir)):
-                if entry.startswith('.') or entry.startswith('!'):
-                    continue
-                sub_path = os.path.join(projects_dir, entry)
-                if os.path.isdir(sub_path):
-                    # Check for ops indicators
-                    has_readme = os.path.isfile(os.path.join(sub_path, 'README.md'))
-                    has_changelog = os.path.isfile(os.path.join(sub_path, 'CHANGELOG.md'))
-                    has_tasks = os.path.isfile(os.path.join(sub_path, '_tasks.yaml'))
-                    rel_path = os.path.relpath(sub_path, vault_path)
-                    sub_projects.append({
-                        'name': entry,
-                        'relative_path': rel_path,
-                        'has_readme': has_readme,
-                        'has_changelog': has_changelog,
-                        'has_tasks': has_tasks,
-                    })
-        except OSError:
-            pass
+    skip_dirs = {'meetings', 'moten', '.obsidian', '.git'}
+    try:
+        for entry in sorted(os.listdir(full_folder)):
+            if entry.startswith('.') or entry.startswith('!') or entry in skip_dirs:
+                continue
+            sub_path = os.path.join(full_folder, entry)
+            if not os.path.isdir(sub_path):
+                continue
+            has_readme = os.path.isfile(os.path.join(sub_path, 'README.md'))
+            has_changelog = os.path.isfile(os.path.join(sub_path, 'CHANGELOG.md'))
+            has_tasks = os.path.isfile(os.path.join(sub_path, '_tasks.yaml'))
+            rel_path = os.path.relpath(sub_path, vault_path)
+            sub_projects.append({
+                'name': entry,
+                'relative_path': rel_path,
+                'has_readme': has_readme,
+                'has_changelog': has_changelog,
+                'has_tasks': has_tasks,
+            })
+    except OSError:
+        pass
 
     # Contact subfolders (for the combined contacts project)
     contact_folders = []
