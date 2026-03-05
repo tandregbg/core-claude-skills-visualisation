@@ -1,10 +1,29 @@
 {% extends "base.html" %}
 
-{% block title %}Activity -- core-skills{% endblock %}
-{% block breadcrumb %}Activity{% endblock %}
+{% block title %}Analytics -- core-skills{% endblock %}
+{% block breadcrumb %}Analytics{% endblock %}
 
 {% block content %}
-<h1 class="page-title">Activity</h1>
+
+<!-- Stat cards (moved from dashboard) -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-label">Active Tasks</div>
+        <div class="stat-value" id="stat-active">--</div>
+    </div>
+    <div class="stat-card danger">
+        <div class="stat-label">Overdue</div>
+        <div class="stat-value" id="stat-overdue">--</div>
+    </div>
+    <div class="stat-card success">
+        <div class="stat-label">Completed (7d)</div>
+        <div class="stat-value" id="stat-completed-week">--</div>
+    </div>
+    <div class="stat-card info">
+        <div class="stat-label">Files Today</div>
+        <div class="stat-value" id="stat-files-today">--</div>
+    </div>
+</div>
 
 <!-- Calendar heatmap -->
 <div class="card">
@@ -23,7 +42,23 @@
     </div>
 </div>
 
-<!-- Charts row -->
+<!-- Charts row: task distribution -->
+<div class="charts-row">
+    <div class="card">
+        <div class="card-header">Priority Distribution</div>
+        <div class="chart-container">
+            <canvas id="priority-chart"></canvas>
+        </div>
+    </div>
+    <div class="card">
+        <div class="card-header">Tasks by Project</div>
+        <div class="chart-container">
+            <canvas id="project-chart"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- Charts row: activity distribution -->
 <div class="charts-row">
     <div class="card">
         <div class="card-header">Meeting Frequency by Domain</div>
@@ -47,6 +82,14 @@
     </div>
 </div>
 
+<!-- Overdue tasks list -->
+<div class="card">
+    <div class="card-header">Overdue Tasks</div>
+    <div id="overdue-list">
+        <p class="empty-state">Loading...</p>
+    </div>
+</div>
+
 <!-- Recent files -->
 <div class="card">
     <div class="card-header">Recent Files</div>
@@ -57,6 +100,7 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', filename='js/heatmap.js') }}"></script>
-<script src="{{ url_for('static', filename='js/activity.js') }}"></script>
+<script src="{{ url_for('static', filename='js/charts.js') }}?v={{ v }}"></script>
+<script src="{{ url_for('static', filename='js/heatmap.js') }}?v={{ v }}"></script>
+<script src="{{ url_for('static', filename='js/activity.js') }}?v={{ v }}"></script>
 {% endblock %}

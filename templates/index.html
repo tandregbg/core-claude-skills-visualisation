@@ -4,106 +4,17 @@
 {% block breadcrumb %}Dashboard{% endblock %}
 
 {% block content %}
-<h1 class="page-title">Dashboard</h1>
 
-<!-- Stat cards -->
-<div class="stats-grid">
-    <div class="stat-card">
-        <div class="stat-label">Active Tasks</div>
-        <div class="stat-value" id="stat-active">--</div>
-    </div>
-    <div class="stat-card danger">
-        <div class="stat-label">Overdue</div>
-        <div class="stat-value" id="stat-overdue">--</div>
-    </div>
-    <div class="stat-card success">
-        <div class="stat-label">Completed (7d)</div>
-        <div class="stat-value" id="stat-completed-week">--</div>
-    </div>
-    <div class="stat-card info">
-        <div class="stat-label">Files Today</div>
-        <div class="stat-value" id="stat-files-today">--</div>
-    </div>
+<!-- Day navigation -->
+<div class="day-badges" id="dashboard-day-nav"></div>
+
+<!-- Day overview sections -->
+<div id="dashboard-content">
+    <p class="empty-state">Loading...</p>
 </div>
 
-<!-- Charts row -->
-<div class="charts-row">
-    <div class="card">
-        <div class="card-header">Priority Distribution</div>
-        <div class="chart-container">
-            <canvas id="priority-chart"></canvas>
-        </div>
-    </div>
-    <div class="card">
-        <div class="card-header">Tasks by Project</div>
-        <div class="chart-container">
-            <canvas id="project-chart"></canvas>
-        </div>
-    </div>
-</div>
-
-<!-- Overdue tasks list -->
-<div class="card">
-    <div class="card-header">Overdue Tasks</div>
-    <div id="overdue-list">
-        <p class="empty-state">Loading...</p>
-    </div>
-</div>
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', filename='js/charts.js') }}"></script>
-<script>
-    document.addEventListener('DOMContentLoaded', () => {
-        loadDashboard();
-        window.addEventListener('folder-change', loadDashboard);
-        window.addEventListener('privacy-change', loadDashboard);
-    });
-
-    async function loadDashboard() {
-        const params = getApiParams();
-
-        try {
-            const [statsRes, overdueRes] = await Promise.all([
-                fetch(`/api/tasks/stats?${params}`),
-                fetch(`/api/tasks/overdue?${params}`)
-            ]);
-
-            const stats = await statsRes.json();
-            const overdue = await overdueRes.json();
-
-            document.getElementById('stat-active').textContent = stats.total_active;
-            document.getElementById('stat-overdue').textContent = stats.overdue_count;
-            document.getElementById('stat-completed-week').textContent = stats.completed_this_week;
-            document.getElementById('stat-files-today').textContent = stats.files_today;
-
-            renderPriorityChart(stats.priority_counts);
-            renderProjectChart(stats.project_counts);
-            renderOverdueList(overdue);
-        } catch (err) {
-            console.error('Failed to load dashboard:', err);
-        }
-    }
-
-    function renderOverdueList(tasks) {
-        const el = document.getElementById('overdue-list');
-        if (tasks.length === 0) {
-            el.innerHTML = '<p class="empty-state">No overdue tasks</p>';
-            return;
-        }
-        el.innerHTML = '<table class="data-table"><thead><tr>' +
-            '<th>Priority</th><th>Task</th><th>Project</th><th>Due</th><th>Overdue</th>' +
-            '</tr></thead><tbody>' +
-            tasks.map(t => `
-                <tr class="overdue clickable-row" onclick="window.location='/tasks/${t.id}'">
-                    <td><span class="priority-badge priority-${t.priority.toLowerCase()}">${t.priority}</span></td>
-                    <td>#${t.id} ${escapeHtml(t.task)}</td>
-                    <td><span class="project-badge project-${t.project}">${t.project}</span></td>
-                    <td>${t.due_display || ''}</td>
-                    <td class="overdue-days">${t.days_overdue}d</td>
-                </tr>
-            `).join('') +
-            '</tbody></table>';
-    }
-</script>
+<script src="{{ url_for('static', filename='js/dashboard.js') }}?v={{ v }}"></script>
 {% endblock %}

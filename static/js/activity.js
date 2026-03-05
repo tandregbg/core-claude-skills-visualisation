@@ -1,5 +1,5 @@
 /**
- * activity.js -- Activity page: domain/type charts, trend, recent files
+ * activity.js -- Activity & Analytics page: stats, charts, heatmap, overdue, recent files
  */
 
 let domainChartInstance = null;
@@ -16,18 +16,32 @@ async function loadActivity() {
     const params = getApiParams();
 
     try {
-        const [activityRes, filesRes] = await Promise.all([
+        const [activityRes, filesRes, statsRes, overdueRes] = await Promise.all([
             fetch(`/api/activity?${params}`),
-            fetch(`/api/files?${params}`)
+            fetch(`/api/files?${params}`),
+            fetch(`/api/tasks/stats?${params}`),
+            fetch(`/api/tasks/overdue?${params}`),
         ]);
 
         const activity = await activityRes.json();
         const files = await filesRes.json();
+        const stats = await statsRes.json();
+        const overdue = await overdueRes.json();
 
+        // Stat cards
+        document.getElementById('stat-active').textContent = stats.total_active;
+        document.getElementById('stat-overdue').textContent = stats.overdue_count;
+        document.getElementById('stat-completed-week').textContent = stats.completed_this_week;
+        document.getElementById('stat-files-today').textContent = stats.files_today;
+
+        // Charts
         renderHeatmap(activity.daily_counts);
+        renderPriorityChart(stats.priority_counts);
+        renderProjectChart(stats.project_counts);
         renderDomainChart(activity.domain_counts);
         renderTypeChart(activity.type_counts);
         renderTrendChart(activity.weekly_counts);
+        renderOverdueList(overdue);
         renderRecentFiles(files);
     } catch (err) {
         console.error('Failed to load activity:', err);
@@ -40,12 +54,10 @@ function renderDomainChart(domainCounts) {
 
     if (domainChartInstance) domainChartInstance.destroy();
 
-    // Sort by count descending
     const entries = Object.entries(domainCounts).sort((a, b) => b[1] - a[1]);
     const labels = entries.map(e => e[0]);
     const data = entries.map(e => e[1]);
 
-    // Generate colors
     const palette = [
         '#3b82f6', '#22c55e', '#f97316', '#ef4444', '#8b5cf6',
         '#06b6d4', '#ec4899', '#eab308', '#14b8a6', '#6366f1',
@@ -162,6 +174,29 @@ function renderTrendChart(weeklyCounts) {
             }
         }
     });
+}
+
+function renderOverdueList(tasks) {
+    const el = document.getElementById('overdue-list');
+    if (!el) return;
+
+    if (tasks.length === 0) {
+        el.innerHTML = '<p class="empty-state">No overdue tasks</p>';
+        return;
+    }
+    el.innerHTML = '<table class="data-table"><thead><tr>' +
+        '<th>Priority</th><th>Task</th><th>Project</th><th>Due</th><th>Overdue</th>' +
+        '</tr></thead><tbody>' +
+        tasks.map(t => `
+            <tr class="overdue clickable-row" onclick="window.location='/tasks/${t.id}'">
+                <td><span class="priority-badge priority-${t.priority.toLowerCase()}">${t.priority}</span></td>
+                <td>#${t.id} ${escapeHtml(t.task || t.title)}</td>
+                <td><span class="project-badge project-${t.project}">${t.project}</span></td>
+                <td>${t.due_display || ''}</td>
+                <td class="overdue-days">${t.days_overdue}d</td>
+            </tr>
+        `).join('') +
+        '</tbody></table>';
 }
 
 function renderRecentFiles(files) {

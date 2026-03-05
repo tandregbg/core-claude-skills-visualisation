@@ -825,6 +825,121 @@ a.task-panel-item:hover {
     margin-left: var(--cs-spacing-xs);
 }
 
+/* === DASHBOARD (day overview) === */
+
+.dashboard-day-section {
+    background: var(--cs-elevation-solid-0);
+    border-radius: var(--cs-border-radius-xs);
+    border: 1px solid var(--cs-elevation-solid-3);
+    margin-bottom: var(--cs-spacing-xl);
+}
+
+.dashboard-day-header {
+    display: flex;
+    align-items: center;
+    gap: var(--cs-spacing-md);
+    padding: var(--cs-spacing-md) var(--cs-spacing-xl);
+    border-bottom: 1px solid var(--cs-elevation-solid-3);
+    background: var(--cs-elevation-solid-2);
+}
+
+.dashboard-day-label {
+    font-weight: var(--cs-font-weight-bold);
+    font-size: var(--cs-font-size-body-lg);
+}
+
+.dashboard-day-date {
+    font-size: var(--cs-font-size-body-sm);
+    color: var(--cs-on-surface-tertiary);
+    font-variant-numeric: tabular-nums;
+}
+
+.dashboard-day-today .dashboard-day-header {
+    border-left: 3px solid var(--cs-status-info, #4a9eff);
+}
+
+.dashboard-day-overdue .dashboard-day-header {
+    border-left: 3px solid var(--cs-status-critical, #ef4444);
+}
+
+.dashboard-day-content {
+    padding: var(--cs-spacing-lg) var(--cs-spacing-xl);
+}
+
+.dashboard-subsection {
+    margin-bottom: var(--cs-spacing-lg);
+}
+
+.dashboard-subsection:last-child {
+    margin-bottom: 0;
+}
+
+.dashboard-subsection-header {
+    font-size: var(--cs-font-size-body-sm);
+    font-weight: var(--cs-font-weight-medium);
+    color: var(--cs-on-surface-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: var(--cs-spacing-sm);
+    display: flex;
+    align-items: center;
+    gap: var(--cs-spacing-xs);
+}
+
+.dashboard-project-group {
+    margin-bottom: var(--cs-spacing-sm);
+    padding-left: var(--cs-spacing-sm);
+}
+
+.dashboard-project-group .project-badge {
+    margin-bottom: 4px;
+}
+
+.dashboard-file-link {
+    display: block;
+    padding: 3px 0 3px var(--cs-spacing-md);
+    font-size: var(--cs-font-size-body-sm);
+    color: var(--cs-on-surface-primary);
+    text-decoration: none;
+    line-height: 1.4;
+}
+
+.dashboard-file-link:hover {
+    color: var(--cs-status-info, #4a9eff);
+}
+
+.dashboard-task {
+    display: flex;
+    align-items: center;
+    gap: var(--cs-spacing-sm);
+    padding: var(--cs-spacing-xs) var(--cs-spacing-sm);
+    border-radius: var(--cs-border-radius-xs);
+    text-decoration: none;
+    color: inherit;
+    font-size: var(--cs-font-size-body-sm);
+}
+
+.dashboard-task:hover {
+    background: var(--cs-elevation-solid-2);
+}
+
+.dashboard-task-title {
+    flex: 1;
+    color: var(--cs-on-surface-primary);
+}
+
+.dashboard-task-id {
+    font-family: var(--cs-font-family-mono);
+    font-size: var(--cs-font-size-body-xs);
+    color: var(--cs-on-surface-tertiary);
+}
+
+.dashboard-overdue-days {
+    font-size: var(--cs-font-size-body-xs);
+    color: var(--cs-status-critical, #ef4444);
+    white-space: nowrap;
+}
+
 /* === TASK DETAIL === */
 
 .detail-meta {
