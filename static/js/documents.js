@@ -402,9 +402,15 @@ async function selectFile(relativePath, obsidianLink) {
 
     const headerEl = document.getElementById('preview-header');
     const filename = relativePath.split('/').pop();
+    const folderPath = relativePath.substring(0, relativePath.lastIndexOf('/'));
+    const changelogPath = folderPath ? folderPath + '/CHANGELOG.md' : 'CHANGELOG.md';
+
     headerEl.innerHTML = `
         <span class="preview-filename">${escapeHtml(filename)}</span>
-        <a href="${escapeAttr(obsidianLink)}" class="preview-link">Open in Obsidian</a>
+        <span class="preview-header-links">
+            <a href="#" class="preview-link preview-changelog-link" onclick="loadChangelog('${escapeAttr(changelogPath)}'); return false;">History</a>
+            <a href="${escapeAttr(obsidianLink)}" class="preview-link">Open in Obsidian</a>
+        </span>
     `;
 
     const contentEl = document.getElementById('preview-content');
@@ -502,6 +508,24 @@ async function loadFolderTasks(documentPath) {
         contentEl.innerHTML = `<p class="empty-state">Failed to load tasks</p>`;
     }
 }
+
+window.loadChangelog = async function(changelogPath) {
+    const contentEl = document.getElementById('preview-content');
+    contentEl.innerHTML = '<p class="empty-state">Loading history...</p>';
+
+    try {
+        const res = await fetch(`/api/files/content?path=${encodeURIComponent(changelogPath)}`);
+        if (!res.ok) {
+            contentEl.innerHTML = '<p class="empty-state">No history available</p>';
+            return;
+        }
+        const data = await res.json();
+        contentEl.innerHTML = data.html;
+        contentEl.scrollTop = 0;
+    } catch (err) {
+        contentEl.innerHTML = '<p class="empty-state">No history available</p>';
+    }
+};
 
 function escapeAttr(s) {
     if (!s) return '';

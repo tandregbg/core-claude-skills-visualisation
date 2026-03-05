@@ -632,6 +632,13 @@
     text-decoration: underline;
 }
 
+.preview-header-links {
+    display: flex;
+    gap: var(--cs-spacing-md);
+    align-items: center;
+    white-space: nowrap;
+}
+
 .recent-preview-content {
     flex: 1;
     overflow-y: auto;

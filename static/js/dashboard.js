@@ -296,12 +296,18 @@ window.dashSelectFile = async function(relativePath, obsidianLink) {
         el.classList.toggle('selected', el.dataset.path === relativePath);
     });
 
-    // Preview header
+    // Preview header with changelog link
     const headerEl = document.getElementById('dashboard-preview-header');
     const filename = relativePath.split('/').pop();
+    const folderPath = relativePath.substring(0, relativePath.lastIndexOf('/'));
+    const changelogPath = folderPath ? folderPath + '/CHANGELOG.md' : 'CHANGELOG.md';
+
     headerEl.innerHTML = `
         <span class="preview-filename">${escapeHtml(filename)}</span>
-        <a href="${escapeAttr(obsidianLink)}" class="preview-link">Open in Obsidian</a>
+        <span class="preview-header-links">
+            <a href="#" class="preview-link preview-changelog-link" onclick="dashLoadChangelog('${escapeAttr(changelogPath)}'); return false;">History</a>
+            <a href="${escapeAttr(obsidianLink)}" class="preview-link">Open in Obsidian</a>
+        </span>
     `;
 
     // Load content and tasks in parallel
@@ -393,6 +399,24 @@ async function loadTasks(documentPath) {
         contentEl.innerHTML = '<p class="empty-state">Failed to load tasks</p>';
     }
 }
+
+window.dashLoadChangelog = async function(changelogPath) {
+    const contentEl = document.getElementById('dashboard-preview-content');
+    contentEl.innerHTML = '<p class="empty-state">Loading history...</p>';
+
+    try {
+        const res = await fetch(`/api/files/content?path=${encodeURIComponent(changelogPath)}`);
+        if (!res.ok) {
+            contentEl.innerHTML = '<p class="empty-state">No history available</p>';
+            return;
+        }
+        const data = await res.json();
+        contentEl.innerHTML = data.html;
+        contentEl.scrollTop = 0;
+    } catch (err) {
+        contentEl.innerHTML = '<p class="empty-state">No history available</p>';
+    }
+};
 
 function resetPreview() {
     document.getElementById('dashboard-preview-header').innerHTML =
