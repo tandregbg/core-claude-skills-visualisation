@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.4.0] - 2026-03-05
+
+### Added
+- **Project page (CR-002):** New `/projects` page with card-based list view and three-column detail view showing ops structure per project
+- **Project detail view:** Left nav with ops files (README, CHANGELOG, CLAUDE.md), meetings list, sub-projects, and contact folders. Center panel renders file content (README by default). Right panel shows project-scoped tasks.
+- **`/api/projects/<name>` endpoint:** Returns full project detail with ops files, meetings, sub-projects, contact folders, tasks, and stats
+- **YYYY-MM-DD date support:** `parse_filename_date()` now handles both `YYMMDD-` and `YYYY-MM-DD-` filename formats
+
+### Changed
+- **Project discovery simplified:** Root-level vault folders use `min_score=1` (any .md file is enough). No more sub-folder scanning -- root folders are the projects, subfolders belong to them.
+- **Contacts combined:** All `_contacts/*` subfolders are now a single "contacts" project instead of individual projects per contact
+- **Sub-project detection:** Checks both `_projects/` and `projects/` subfolder conventions
+- **Meeting folder detection:** Checks both `meetings/` and `moten/` subfolder conventions
+
 ## [0.3.3] - 2026-03-05
 
 ### Added
