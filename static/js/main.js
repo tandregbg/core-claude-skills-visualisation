@@ -29,18 +29,47 @@ const PRIORITY_COLORS = {
 // ---- Init ----
 
 document.addEventListener('DOMContentLoaded', () => {
+    initSidebarToggle();
+    setActiveNavLink();
     initFolderSelector();
     initPrivacyToggle();
     initRefreshButton();
     initAutoRefresh();
-    setActiveNavLink();
 });
+
+// ---- Sidebar collapse ----
+
+function initSidebarToggle() {
+    const btn = document.getElementById('sidebar-toggle');
+    const sidebar = document.getElementById('sidebar');
+    const layout = document.querySelector('.app-layout');
+    if (!btn || !sidebar) return;
+
+    // Restore saved state
+    if (sessionStorage.getItem('sidebar-collapsed') === 'true') {
+        sidebar.classList.add('collapsed');
+        if (layout) layout.classList.add('sidebar-collapsed');
+    }
+
+    btn.addEventListener('click', () => {
+        const collapsed = sidebar.classList.toggle('collapsed');
+        if (layout) layout.classList.toggle('sidebar-collapsed', collapsed);
+        sessionStorage.setItem('sidebar-collapsed', collapsed);
+    });
+}
 
 // ---- Folder selector ----
 
-async function initFolderSelector() {
+let _projectStyleEl = null;
+
+async function loadProjects() {
     const select = document.getElementById('folder-select');
     if (!select) return;
+
+    // Clear existing options (keep "All projects")
+    while (select.options.length > 1) {
+        select.remove(1);
+    }
 
     try {
         const res = await fetch('/api/projects');
@@ -68,25 +97,44 @@ async function initFolderSelector() {
             cssRules.push(`.project-${name} { background: ${color.bg}; color: ${color.text}; }`);
         }
 
-        // Inject dynamic project CSS
+        // Replace dynamic project CSS
+        if (_projectStyleEl) _projectStyleEl.remove();
         if (cssRules.length > 0) {
-            const style = document.createElement('style');
-            style.textContent = cssRules.join('\n');
-            document.head.appendChild(style);
+            _projectStyleEl = document.createElement('style');
+            _projectStyleEl.textContent = cssRules.join('\n');
+            document.head.appendChild(_projectStyleEl);
         }
     } catch (err) {
         console.error('Failed to load projects:', err);
     }
 
+    // Restore saved selection (reset to 'all' if project no longer exists)
     const saved = sessionStorage.getItem('folder');
-    if (saved) {
+    if (saved && select.querySelector(`option[value="${saved}"]`)) {
         select.value = saved;
         currentFolder = saved;
+    } else {
+        select.value = 'all';
+        currentFolder = 'all';
+        sessionStorage.removeItem('folder');
     }
+}
+
+async function initFolderSelector() {
+    const select = document.getElementById('folder-select');
+    if (!select) return;
+
+    await loadProjects();
 
     select.addEventListener('change', () => {
         currentFolder = select.value;
         sessionStorage.setItem('folder', currentFolder);
+        window.dispatchEvent(new Event('folder-change'));
+    });
+
+    // Reload dropdown when settings are saved
+    window.addEventListener('settings-saved', async () => {
+        await loadProjects();
         window.dispatchEvent(new Event('folder-change'));
     });
 }
@@ -157,8 +205,10 @@ function setActiveNavLink() {
         const page = link.dataset.page;
         const isActive = (page === 'index' && path === '/') ||
                          (page === 'tasks' && path.startsWith('/tasks')) ||
-                         (page === 'recent' && path === '/recent') ||
-                         (page === 'activity' && path === '/activity');
+                         (page === 'documents' && path === '/documents') ||
+                         (page === 'activity' && path === '/activity') ||
+                         (page === 'insights' && path === '/insights') ||
+                         (page === 'settings' && path === '/settings');
         if (isActive) {
             link.classList.add('active');
         }

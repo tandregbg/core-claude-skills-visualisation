@@ -232,9 +232,9 @@ def insights_page():
     return render_template('insights.html')
 
 
-@app.route('/recent')
-def recent_page():
-    return render_template('recent.html')
+@app.route('/documents')
+def documents_page():
+    return render_template('documents.html')
 
 
 @app.route('/tasks/<int:task_id>')
@@ -533,9 +533,20 @@ def api_files_recent():
             grouped[day_key] = []
         grouped[day_key].append(_serialize_file(f))
 
+    # Aggregate counts for filter badges
+    project_counts = {}
+    type_counts = {}
+    for f in recent:
+        p = f.get('project', 'other')
+        project_counts[p] = project_counts.get(p, 0) + 1
+        t = f.get('file_type', 'other')
+        type_counts[t] = type_counts.get(t, 0) + 1
+
     return jsonify({
         'days': grouped,
         'total': len(recent),
+        'project_counts': project_counts,
+        'type_counts': type_counts,
     })
 
 

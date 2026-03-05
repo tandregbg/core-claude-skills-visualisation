@@ -1,20 +1,21 @@
 /**
- * recent.js -- Recent Updates page: day badges, file list, markdown preview
+ * documents.js -- Documents page: project badges, type badges, day badges, file list, preview
  */
 
 let selectedFilePath = null;
 let selectedDay = null;
 let cachedData = null;
+let activeProjects = new Set(); // empty = all
+let activeTypes = new Set();    // empty = all
 
 document.addEventListener('DOMContentLoaded', () => {
-    loadRecentFiles();
-
-    document.getElementById('days-select').addEventListener('change', loadRecentFiles);
-    window.addEventListener('folder-change', loadRecentFiles);
-    window.addEventListener('privacy-change', loadRecentFiles);
+    loadDocuments();
+    document.getElementById('days-select').addEventListener('change', loadDocuments);
+    window.addEventListener('folder-change', loadDocuments);
+    window.addEventListener('privacy-change', loadDocuments);
 });
 
-async function loadRecentFiles() {
+async function loadDocuments() {
     const params = getApiParams();
     const days = document.getElementById('days-select').value;
 
@@ -23,24 +24,120 @@ async function loadRecentFiles() {
         const data = await res.json();
         cachedData = data;
         selectedDay = null;
+
+        renderProjectBadges(data.project_counts || {});
+        renderDocTypeBadges(data.type_counts || {});
         renderDayBadges(data);
         renderFileList(data, null);
     } catch (err) {
-        console.error('Failed to load recent files:', err);
+        console.error('Failed to load documents:', err);
     }
 }
+
+// -- Project filter badges --
+
+function renderProjectBadges(projectCounts) {
+    const container = document.getElementById('project-badges');
+    const sorted = Object.entries(projectCounts).sort((a, b) => b[1] - a[1]);
+
+    if (sorted.length === 0) {
+        container.innerHTML = '';
+        return;
+    }
+
+    container.innerHTML = sorted.map(([proj, count]) => {
+        const isActive = activeProjects.has(proj);
+        return `<button class="day-badge${isActive ? ' active' : ''}"
+                    onclick="toggleProject('${escapeAttr(proj)}')">
+                    <span class="day-badge-label">${escapeHtml(proj)}</span>
+                    <span class="day-badge-count">${count}</span>
+                </button>`;
+    }).join('');
+}
+
+window.toggleProject = function(proj) {
+    if (activeProjects.has(proj)) {
+        activeProjects.delete(proj);
+    } else {
+        activeProjects.add(proj);
+    }
+    applyFilters();
+};
+
+// -- Document type filter badges --
+
+function renderDocTypeBadges(typeCounts) {
+    const container = document.getElementById('type-badges');
+    const sorted = Object.entries(typeCounts).sort((a, b) => b[1] - a[1]);
+
+    if (sorted.length === 0) {
+        container.innerHTML = '';
+        return;
+    }
+
+    container.innerHTML = sorted.map(([type, count]) => {
+        const isActive = activeTypes.has(type);
+        return `<button class="day-badge${isActive ? ' active' : ''}"
+                    onclick="toggleDocType('${escapeAttr(type)}')">
+                    <span class="day-badge-label">${escapeHtml(type)}</span>
+                    <span class="day-badge-count">${count}</span>
+                </button>`;
+    }).join('');
+}
+
+window.toggleDocType = function(type) {
+    if (activeTypes.has(type)) {
+        activeTypes.delete(type);
+    } else {
+        activeTypes.add(type);
+    }
+    applyFilters();
+};
+
+// -- Apply client-side filters and re-render --
+
+function applyFilters() {
+    if (!cachedData) return;
+    selectedDay = null;
+    renderDayBadges(cachedData);
+    renderFileList(cachedData, null);
+}
+
+function getFilteredFiles(dayFiles) {
+    let files = dayFiles;
+    if (activeProjects.size > 0) {
+        files = files.filter(f => activeProjects.has(f.project));
+    }
+    if (activeTypes.size > 0) {
+        files = files.filter(f => activeTypes.has(f.file_type));
+    }
+    return files;
+}
+
+function getFilteredData() {
+    if (!cachedData) return { days: {}, total: 0 };
+    const result = {};
+    let total = 0;
+    for (const [dayKey, files] of Object.entries(cachedData.days)) {
+        const filtered = getFilteredFiles(files);
+        if (filtered.length > 0) {
+            result[dayKey] = filtered;
+            total += filtered.length;
+        }
+    }
+    return { days: result, total };
+}
+
+// -- Day badges --
 
 function getDayLabel(dayKey) {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-
     const d = new Date(dayKey + 'T00:00:00');
     const diff = Math.round((d - today) / 86400000);
-
     if (diff === 0) return 'Today';
     if (diff === -1) return 'Yesterday';
     if (diff === 1) return 'Tomorrow';
-
     const weekdayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     return weekdayNames[d.getDay()];
 }
@@ -50,36 +147,36 @@ function getDayType(dayKey) {
     today.setHours(0, 0, 0, 0);
     const d = new Date(dayKey + 'T00:00:00');
     const diff = Math.round((d - today) / 86400000);
-
     if (diff === 0) return 'today';
     if (diff === 1) return 'tomorrow';
     if (diff < 0) return 'past';
     return 'future';
 }
 
-function renderDayBadges(data) {
+function renderDayBadges(rawData) {
     const container = document.getElementById('day-badges');
     const countEl = document.getElementById('file-count');
-    const days = data.days;
+    const filtered = getFilteredData();
+    const days = filtered.days;
     const sortedDays = Object.keys(days).sort();
 
-    countEl.textContent = `${data.total} files`;
+    countEl.textContent = `${filtered.total} documents`;
 
     if (sortedDays.length === 0) {
         container.innerHTML = '';
         return;
     }
 
-    // "All" badge first
-    const allBadge = `<button class="day-badge day-badge-all active" onclick="filterByDay(null)">All <span class="day-badge-count">${data.total}</span></button>`;
+    const allBadge = `<button class="day-badge day-badge-all${selectedDay === null ? ' active' : ''}" onclick="filterByDay(null)">All <span class="day-badge-count">${filtered.total}</span></button>`;
 
     const badges = sortedDays.map(dayKey => {
         const files = days[dayKey];
         const label = getDayLabel(dayKey);
         const type = getDayType(dayKey);
-        const dateStr = dayKey.slice(5); // MM-DD
+        const dateStr = dayKey.slice(5);
+        const isActive = selectedDay === dayKey;
 
-        return `<button class="day-badge day-badge-${type}" onclick="filterByDay('${dayKey}')" data-day="${dayKey}">
+        return `<button class="day-badge day-badge-${type}${isActive ? ' active' : ''}" onclick="filterByDay('${dayKey}')" data-day="${dayKey}">
             <span class="day-badge-label">${label}</span>
             <span class="day-badge-date">${dateStr}</span>
             <span class="day-badge-count">${files.length}</span>
@@ -89,27 +186,31 @@ function renderDayBadges(data) {
     container.innerHTML = allBadge + badges;
 }
 
-function filterByDay(dayKey) {
+window.filterByDay = function(dayKey) {
     selectedDay = dayKey;
     selectedFilePath = null;
 
     // Update badge active state
-    document.querySelectorAll('.day-badge').forEach(el => {
+    document.querySelectorAll('#day-badges .day-badge').forEach(el => {
         el.classList.remove('active');
     });
     if (dayKey === null) {
-        document.querySelector('.day-badge-all').classList.add('active');
+        const allBtn = document.querySelector('.day-badge-all');
+        if (allBtn) allBtn.classList.add('active');
     } else {
-        const badge = document.querySelector(`.day-badge[data-day="${dayKey}"]`);
+        const badge = document.querySelector(`#day-badges .day-badge[data-day="${dayKey}"]`);
         if (badge) badge.classList.add('active');
     }
 
     renderFileList(cachedData, dayKey);
-}
+};
 
-function renderFileList(data, filterDay) {
+// -- File list --
+
+function renderFileList(rawData, filterDay) {
     const container = document.getElementById('file-list');
-    const days = data.days;
+    const filtered = getFilteredData();
+    const days = filtered.days;
     let sortedDays = Object.keys(days).sort().reverse();
 
     if (filterDay) {
@@ -117,7 +218,7 @@ function renderFileList(data, filterDay) {
     }
 
     if (sortedDays.length === 0) {
-        container.innerHTML = '<p class="empty-state">No files for this day</p>';
+        container.innerHTML = '<p class="empty-state">No documents found</p>';
         resetPreview();
         return;
     }
@@ -164,7 +265,6 @@ function renderFileItem(f) {
     const isSelected = f.relative_path === selectedFilePath;
     const selectedClass = isSelected ? ' selected' : '';
 
-    // Clean display name
     let displayName = f.filename;
     if (/^\d{6}-/.test(displayName)) {
         displayName = displayName.substring(7);
@@ -181,7 +281,7 @@ function renderFileItem(f) {
             <div class="file-item-name">${escapeHtml(displayName)}</div>
             <div class="file-item-meta">
                 <span class="project-badge project-${f.project}">${f.project}</span>
-                <span class="file-item-domain">${f.domain}</span>
+                <span class="file-item-domain">${f.file_type}</span>
             </div>
         </div>
     `;
@@ -190,7 +290,6 @@ function renderFileItem(f) {
 async function selectFile(relativePath, obsidianLink) {
     selectedFilePath = relativePath;
 
-    // Update visual selection
     document.querySelectorAll('.file-item').forEach(el => {
         if (el.dataset.path === relativePath) {
             el.classList.add('selected');
@@ -199,7 +298,6 @@ async function selectFile(relativePath, obsidianLink) {
         }
     });
 
-    // Update header
     const headerEl = document.getElementById('preview-header');
     const filename = relativePath.split('/').pop();
     headerEl.innerHTML = `
@@ -207,7 +305,6 @@ async function selectFile(relativePath, obsidianLink) {
         <a href="${escapeAttr(obsidianLink)}" class="preview-link">Open in Obsidian</a>
     `;
 
-    // Load content
     const contentEl = document.getElementById('preview-content');
     contentEl.innerHTML = '<p class="empty-state">Loading...</p>';
 

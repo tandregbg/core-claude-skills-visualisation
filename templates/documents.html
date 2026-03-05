@@ -1,19 +1,29 @@
 {% extends "base.html" %}
 
-{% block title %}Recent Updates -- core-skills{% endblock %}
-{% block breadcrumb %}Recent{% endblock %}
+{% block title %}Documents -- core-skills{% endblock %}
+{% block breadcrumb %}Documents{% endblock %}
 
 {% block content %}
-<div class="page-title-row">
-    <h1 class="page-title">Recent Updates</h1>
-    <div class="view-controls">
-        <select id="days-select" class="filter-select">
-            <option value="3">Last 3 days</option>
-            <option value="7" selected>Last 7 days</option>
-            <option value="14">Last 14 days</option>
-            <option value="30">Last 30 days</option>
-        </select>
-        <span class="file-count-label" id="file-count"></span>
+
+<!-- Project filter badges -->
+<div class="filter-badges-row">
+    <div class="day-badges" id="project-badges">
+        <!-- Rendered by JS -->
+    </div>
+    <div class="badge-separator"></div>
+    <select id="days-select" class="filter-select">
+        <option value="3">Last 3 days</option>
+        <option value="7" selected>Last 7 days</option>
+        <option value="14">Last 14 days</option>
+        <option value="30">Last 30 days</option>
+    </select>
+    <span class="file-count-label" id="file-count"></span>
+</div>
+
+<!-- Document type filter badges -->
+<div class="filter-badges-row">
+    <div class="day-badges" id="type-badges">
+        <!-- Rendered by JS -->
     </div>
 </div>
 
@@ -41,5 +51,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', filename='js/recent.js') }}"></script>
+<script src="{{ url_for('static', filename='js/documents.js') }}?v={{ v }}"></script>
 {% endblock %}
