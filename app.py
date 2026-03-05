@@ -316,6 +316,16 @@ def documents_page():
     return render_template('documents.html')
 
 
+@app.route('/projects')
+def projects_page():
+    return render_template('projects.html')
+
+
+@app.route('/projects/<path:name>')
+def project_detail_page(name):
+    return render_template('projects.html', project_name=name)
+
+
 @app.route('/tasks/<int:task_id>')
 def task_detail(task_id):
     return render_template('task_detail.html', task_id=task_id, vault_name=config.VAULT_NAME)
@@ -456,6 +466,35 @@ def api_projects():
     projects, _ = _get_tasks_cached()
     enabled = {k: v for k, v in projects.items() if v.get('enabled', True)}
     return jsonify(enabled)
+
+
+@app.route('/api/projects/<path:name>')
+def api_project_detail(name):
+    """Return detailed info about a single project's ops structure."""
+    projects, all_tasks = _get_tasks_cached()
+    if name not in projects:
+        return jsonify({'error': 'Project not found'}), 404
+
+    detail = activity_parser.get_project_detail(
+        config.VAULT_PATH, name, projects[name], config.VAULT_NAME
+    )
+
+    # Serialize dates
+    for m in detail['meetings']:
+        m['date'] = _serialize_date(m['date'])
+    for cf in detail.get('contact_folders', []):
+        if cf.get('latest_date'):
+            cf['latest_date'] = _serialize_date(cf['latest_date'])
+    dr = detail['stats'].get('date_range')
+    if dr:
+        dr['earliest'] = _serialize_date(dr['earliest'])
+        dr['latest'] = _serialize_date(dr['latest'])
+
+    # Add project tasks
+    project_tasks = _filter_tasks(all_tasks, name, include_private=False)
+    detail['tasks'] = [_serialize_task(t) for t in project_tasks]
+
+    return jsonify(detail)
 
 
 @app.route('/api/tasks')

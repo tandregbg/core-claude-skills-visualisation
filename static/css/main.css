@@ -1530,3 +1530,190 @@ a.task-panel-item:hover {
 .markdown-body strong {
     font-weight: 600;
 }
+
+/* === PROJECTS PAGE === */
+
+.project-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: var(--cs-spacing-lg);
+    padding: var(--cs-spacing-lg) 0;
+}
+
+.project-card {
+    background: var(--cs-surface-elevated);
+    border: 1px solid var(--cs-border);
+    border-radius: var(--cs-radius-lg);
+    padding: var(--cs-spacing-lg);
+    cursor: pointer;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.project-card:hover {
+    border-color: var(--cs-primary);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.project-card-name {
+    font-weight: 600;
+    font-size: var(--cs-font-size-body-lg);
+    margin-bottom: var(--cs-spacing-xs);
+}
+
+.project-card-path {
+    font-size: var(--cs-font-size-body-sm);
+    color: var(--cs-on-surface-secondary);
+    font-family: var(--cs-font-mono);
+    margin-bottom: var(--cs-spacing-xs);
+}
+
+.project-card-source {
+    font-size: var(--cs-font-size-body-xs);
+    color: var(--cs-on-surface-tertiary);
+}
+
+/* Project detail */
+
+.project-detail-header {
+    margin-bottom: var(--cs-spacing-lg);
+}
+
+.back-link {
+    font-size: var(--cs-font-size-body-sm);
+    color: var(--cs-primary);
+    text-decoration: none;
+    margin-bottom: var(--cs-spacing-sm);
+    display: inline-block;
+}
+
+.back-link:hover {
+    text-decoration: underline;
+}
+
+.project-detail-header h2 {
+    margin: var(--cs-spacing-xs) 0 0;
+    font-size: var(--cs-font-size-heading-lg);
+}
+
+.project-vault-path {
+    font-size: var(--cs-font-size-body-sm);
+    color: var(--cs-on-surface-secondary);
+    font-family: var(--cs-font-mono);
+}
+
+/* Project nav (left column) */
+
+.project-nav {
+    min-width: 260px;
+    max-width: 300px;
+    flex-shrink: 0;
+    overflow-y: auto;
+    max-height: calc(100vh - 180px);
+    padding-right: var(--cs-spacing-md);
+    border-right: 1px solid var(--cs-border);
+}
+
+.project-nav-section {
+    margin-bottom: var(--cs-spacing-lg);
+}
+
+.project-nav-label {
+    font-size: var(--cs-font-size-body-xs);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--cs-on-surface-tertiary);
+    margin-bottom: var(--cs-spacing-xs);
+    padding: 0 var(--cs-spacing-sm);
+}
+
+.project-nav-item {
+    display: flex;
+    align-items: center;
+    gap: var(--cs-spacing-sm);
+    padding: var(--cs-spacing-xs) var(--cs-spacing-sm);
+    font-size: var(--cs-font-size-body-sm);
+    color: var(--cs-on-surface);
+    text-decoration: none;
+    border-radius: var(--cs-radius-sm);
+    cursor: pointer;
+    line-height: 1.4;
+}
+
+.project-nav-item:hover {
+    background: var(--cs-surface-hover);
+}
+
+.project-nav-item-active {
+    background: var(--cs-primary-light, rgba(59, 130, 246, 0.1));
+    color: var(--cs-primary);
+}
+
+.file-size {
+    margin-left: auto;
+    font-size: var(--cs-font-size-body-xs);
+    color: var(--cs-on-surface-tertiary);
+    font-family: var(--cs-font-mono);
+}
+
+.meeting-date {
+    font-size: var(--cs-font-size-body-xs);
+    color: var(--cs-on-surface-tertiary);
+    font-family: var(--cs-font-mono);
+    white-space: nowrap;
+    min-width: 70px;
+}
+
+.meeting-category {
+    font-size: var(--cs-font-size-body-xs);
+    color: var(--cs-on-surface-secondary);
+    background: var(--cs-surface-hover);
+    padding: 1px 6px;
+    border-radius: var(--cs-radius-sm);
+    white-space: nowrap;
+}
+
+.meeting-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.sub-project-indicators {
+    font-size: var(--cs-font-size-body-xs);
+    font-family: var(--cs-font-mono);
+    color: var(--cs-on-surface-tertiary);
+    margin-left: auto;
+}
+
+.contact-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.contact-meta {
+    margin-left: auto;
+    font-size: var(--cs-font-size-body-xs);
+    color: var(--cs-on-surface-tertiary);
+    white-space: nowrap;
+}
+
+.more-count {
+    display: block;
+    padding: var(--cs-spacing-xs) var(--cs-spacing-sm);
+    font-size: var(--cs-font-size-body-xs);
+    color: var(--cs-on-surface-tertiary);
+}
+
+.project-stat {
+    font-size: var(--cs-font-size-body-sm);
+    color: var(--cs-on-surface-secondary);
+    padding: 0 var(--cs-spacing-sm);
+}
+
+.empty-state-sm {
+    color: var(--cs-on-surface-tertiary);
+    font-size: var(--cs-font-size-body-xs);
+    padding: var(--cs-spacing-xs) var(--cs-spacing-sm);
+}

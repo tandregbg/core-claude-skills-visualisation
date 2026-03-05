@@ -90,13 +90,21 @@ def discover_projects(vault_path, registered_projects=None, scan_depth=2):
             if os.path.isdir(os.path.join(full, d)):
                 score += 1
 
-        # Count dated files (YYMMDD-*.md) as an indicator
+        # Count dated files (YYMMDD-*.md) or any .md files as indicators
         if score < min_score:
             try:
+                has_dated = False
+                has_md = False
                 for f in os.listdir(full):
-                    if f.endswith('.md') and len(f) > 7 and f[:6].isdigit() and f[6] == '-':
-                        score += 1
-                        break  # one dated file is enough
+                    if f.endswith('.md'):
+                        has_md = True
+                        if len(f) > 7 and f[:6].isdigit() and f[6] == '-':
+                            has_dated = True
+                            break
+                if has_dated:
+                    score += 1
+                elif has_md:
+                    score += 1
             except OSError:
                 pass
 
@@ -120,10 +128,20 @@ def discover_projects(vault_path, registered_projects=None, scan_depth=2):
         if not os.path.isdir(full_entry):
             continue
 
-        # Scan inside _projects/ and _contacts/ as container folders
-        if entry in ('_projects', '_contacts', '_private'):
-            # Contact folders need lower threshold -- a CHANGELOG or dated files is enough
-            threshold = 1 if entry == '_contacts' else 2
+        # _contacts is treated as a single project (all subfolders combined)
+        if entry == '_contacts':
+            if os.path.isdir(full_entry) and full_entry.rstrip('/') + '/' not in registered_paths:
+                path = entry + '/'
+                if path.rstrip('/') not in registered_paths:
+                    discovered['contacts'] = {
+                        'vault': path,
+                        'shared_view': True,
+                        'discovered': True,
+                    }
+            continue
+
+        # Scan inside _projects/ and _private/ as container folders
+        if entry in ('_projects', '_private'):
             try:
                 sub_entries = os.listdir(full_entry)
             except OSError:
@@ -133,29 +151,15 @@ def discover_projects(vault_path, registered_projects=None, scan_depth=2):
                     continue
                 sub_path = os.path.join(entry, sub)
                 if os.path.isdir(os.path.join(vault_path, sub_path)):
-                    _check_folder(sub_path, sub, min_score=threshold)
+                    _check_folder(sub_path, sub, min_score=2)
             continue
 
         # Skip other _ prefixed folders (system files like _tasks.yaml etc.)
         if entry.startswith('_'):
             continue
 
-        # Check top-level folder
-        _check_folder(entry, entry)
-
-        # Check one level deeper for container folders when scan_depth >= 2
-        if scan_depth >= 2:
-            try:
-                sub_entries = os.listdir(full_entry)
-            except OSError:
-                continue
-
-            for sub in sorted(sub_entries):
-                if sub.startswith(('.', '_', '!')):
-                    continue
-                sub_path = os.path.join(entry, sub)
-                if os.path.isdir(os.path.join(vault_path, sub_path)):
-                    _check_folder(sub_path, sub)
+        # Check top-level folder (lower threshold -- root folders are intentional)
+        _check_folder(entry, entry, min_score=1)
 
     # Merge: registered projects first, then discovered
     merged = dict(registered_projects)
@@ -183,13 +187,20 @@ def classify_type(filename):
 
 
 def parse_filename_date(filename):
-    """Extract date from YYMMDD-*.md filename."""
+    """Extract date from YYMMDD-*.md or YYYY-MM-DD-*.md filename."""
     m = re.match(r'^(\d{6})-', filename)
     if m:
         try:
             return datetime.strptime(m.group(1), '%y%m%d').date()
         except ValueError:
-            return None
+            pass
+    # Also try YYYY-MM-DD format
+    m = re.match(r'^(\d{4}-\d{2}-\d{2})-', filename)
+    if m:
+        try:
+            return datetime.strptime(m.group(1), '%Y-%m-%d').date()
+        except ValueError:
+            pass
     return None
 
 
@@ -427,3 +438,165 @@ def get_files_created_today(files, today=None):
     if today is None:
         today = date.today()
     return sum(1 for f in files if f.get('date') == today)
+
+
+def get_project_detail(vault_path, project_name, project_config, vault_name=None):
+    """Get detailed info about a single project's ops structure.
+
+    Returns dict with:
+        name, vault_path, ops_files, meetings, sub_projects, stats
+    """
+    if vault_name is None:
+        vault_name = os.path.basename(vault_path)
+
+    folder = project_config.get('vault', '')
+    full_folder = os.path.join(vault_path, folder)
+
+    # Ops files: check existence and build paths
+    ops_file_names = ['README.md', 'CHANGELOG.md', 'CLAUDE.md']
+    ops_files = []
+    for fname in ops_file_names:
+        fpath = os.path.join(full_folder, fname)
+        rel = os.path.join(folder, fname) if folder else fname
+        exists = os.path.isfile(fpath)
+        mtime = 0
+        size = 0
+        if exists:
+            try:
+                stat = os.stat(fpath)
+                mtime = stat.st_mtime
+                size = stat.st_size
+            except OSError:
+                pass
+        ops_files.append({
+            'filename': fname,
+            'relative_path': rel,
+            'exists': exists,
+            'mtime': mtime,
+            'size': size,
+        })
+
+    # Meetings: scan meetings/ or moten/ subfolder for dated files
+    meetings = []
+    meetings_dir = os.path.join(full_folder, 'meetings')
+    if not os.path.isdir(meetings_dir):
+        meetings_dir = os.path.join(full_folder, 'moten')
+    if os.path.isdir(meetings_dir):
+        for root, dirs, filenames in os.walk(meetings_dir):
+            dirs[:] = [d for d in dirs if not d.startswith('.')]
+            for fname in filenames:
+                if not fname.endswith('.md'):
+                    continue
+                file_date = parse_filename_date(fname)
+                if file_date is None:
+                    continue
+                full_path = os.path.join(root, fname)
+                rel_to_vault = os.path.relpath(full_path, vault_path)
+                try:
+                    stat = os.stat(full_path)
+                    mtime = stat.st_mtime
+                    size = stat.st_size
+                except OSError:
+                    mtime = 0
+                    size = 0
+                # Subfolder within meetings/
+                sub = os.path.relpath(root, meetings_dir)
+                category = sub if sub != '.' else ''
+                obsidian_file = rel_to_vault
+                if obsidian_file.endswith('.md'):
+                    obsidian_file = obsidian_file[:-3]
+                obsidian_link = f"obsidian://open?vault={quote(vault_name)}&file={quote(obsidian_file)}"
+                meetings.append({
+                    'filename': fname,
+                    'relative_path': rel_to_vault,
+                    'date': file_date,
+                    'category': category,
+                    'file_type': classify_type(fname),
+                    'obsidian_link': obsidian_link,
+                    'mtime': mtime,
+                    'size': size,
+                })
+    meetings.sort(key=lambda m: (m['date'], m['mtime']), reverse=True)
+
+    # Sub-projects: scan projects/ or _projects/ subfolder
+    sub_projects = []
+    projects_dir = os.path.join(full_folder, '_projects')
+    if not os.path.isdir(projects_dir):
+        projects_dir = os.path.join(full_folder, 'projects')
+    if os.path.isdir(projects_dir):
+        try:
+            for entry in sorted(os.listdir(projects_dir)):
+                if entry.startswith('.') or entry.startswith('!'):
+                    continue
+                sub_path = os.path.join(projects_dir, entry)
+                if os.path.isdir(sub_path):
+                    # Check for ops indicators
+                    has_readme = os.path.isfile(os.path.join(sub_path, 'README.md'))
+                    has_changelog = os.path.isfile(os.path.join(sub_path, 'CHANGELOG.md'))
+                    has_tasks = os.path.isfile(os.path.join(sub_path, '_tasks.yaml'))
+                    rel_path = os.path.relpath(sub_path, vault_path)
+                    sub_projects.append({
+                        'name': entry,
+                        'relative_path': rel_path,
+                        'has_readme': has_readme,
+                        'has_changelog': has_changelog,
+                        'has_tasks': has_tasks,
+                    })
+        except OSError:
+            pass
+
+    # Contact subfolders (for the combined contacts project)
+    contact_folders = []
+    if folder.rstrip('/') == '_contacts':
+        try:
+            for entry in sorted(os.listdir(full_folder)):
+                if entry.startswith('.'):
+                    continue
+                sub_path = os.path.join(full_folder, entry)
+                if os.path.isdir(sub_path):
+                    # Count dated files
+                    file_count = 0
+                    latest_date = None
+                    for f in os.listdir(sub_path):
+                        if f.endswith('.md'):
+                            fd = parse_filename_date(f)
+                            if fd:
+                                file_count += 1
+                                if latest_date is None or fd > latest_date:
+                                    latest_date = fd
+                    if file_count > 0:
+                        contact_folders.append({
+                            'name': entry,
+                            'relative_path': os.path.join(folder, entry),
+                            'file_count': file_count,
+                            'latest_date': latest_date,
+                        })
+        except OSError:
+            pass
+        contact_folders.sort(key=lambda c: c.get('latest_date') or date.min, reverse=True)
+
+    # Stats: count all dated files
+    all_files = scan_vault_folder(vault_path, folder, vault_name)
+    total_files = len(all_files)
+    date_range = None
+    if all_files:
+        dates = [f['date'] for f in all_files if f.get('date')]
+        if dates:
+            date_range = {
+                'earliest': min(dates),
+                'latest': max(dates),
+            }
+
+    return {
+        'name': project_name,
+        'vault': folder,
+        'discovered': project_config.get('discovered', False),
+        'ops_files': ops_files,
+        'meetings': meetings,
+        'sub_projects': sub_projects,
+        'contact_folders': contact_folders,
+        'stats': {
+            'total_files': total_files,
+            'date_range': date_range,
+        },
+    }
