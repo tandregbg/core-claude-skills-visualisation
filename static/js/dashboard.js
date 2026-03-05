@@ -1,9 +1,12 @@
 /**
- * dashboard.js -- Day-oriented overview with documents, tasks, and project status
+ * dashboard.js -- Day-oriented dashboard with project filtering,
+ * document list, content preview, and context-scoped tasks.
  */
 
 let dashData = null;
 let selectedDay = null;
+let activeProjects = new Set();
+let selectedFilePath = null;
 
 function getTodayKey() {
     return new Date().toISOString().slice(0, 10);
@@ -26,20 +29,19 @@ async function loadDashboard() {
     const params = getApiParams();
 
     try {
-        const [filesRes, tasksRes, overdueRes] = await Promise.all([
+        const [filesRes, overdueRes] = await Promise.all([
             fetch(`/api/files/recent?${params}&days=3`),
-            fetch(`/api/tasks?${params}`),
             fetch(`/api/tasks/overdue?${params}`),
         ]);
 
         const filesData = await filesRes.json();
-        const tasks = await tasksRes.json();
         const overdue = await overdueRes.json();
 
-        dashData = { filesData, tasks, overdue };
+        dashData = { filesData, overdue };
 
         renderDayNav();
-        renderAll();
+        renderProjectBadges();
+        renderDocsList();
     } catch (err) {
         console.error('Failed to load dashboard:', err);
     }
@@ -62,241 +64,339 @@ function renderDayNav() {
     const filesPerDay = dashData.filesData.days || {};
 
     nav.innerHTML = days.map(({ key, label, type }) => {
-        const count = (filesPerDay[key] || []).length;
+        const dayFiles = getFilteredDayFiles(key);
         const isActive = selectedDay === key;
         return `<button class="day-badge day-badge-${type}${isActive ? ' active' : ''}"
-                    data-day="${key}" onclick="selectDay('${key}')">
+                    data-day="${key}" onclick="dashSelectDay('${key}')">
             <span class="day-badge-label">${label}</span>
-            <span class="day-badge-count">${count}</span>
+            <span class="day-badge-count">${dayFiles.length}</span>
         </button>`;
     }).join('');
+
+    // Add overdue indicator
+    if (dashData.overdue.length > 0) {
+        nav.innerHTML += `<button class="day-badge day-badge-overdue${selectedDay === 'overdue' ? ' active' : ''}"
+            onclick="dashSelectDay('overdue')">
+            <span class="day-badge-label">Overdue</span>
+            <span class="day-badge-count">${dashData.overdue.length}</span>
+        </button>`;
+    }
 }
 
-window.selectDay = function(dayKey) {
+window.dashSelectDay = function(dayKey) {
     selectedDay = dayKey;
-    document.querySelectorAll('#dashboard-day-nav .day-badge').forEach(el => {
-        el.classList.toggle('active', el.dataset.day === dayKey);
-    });
-    renderAll();
+    selectedFilePath = null;
+    renderDayNav();
+    renderProjectBadges();
+    renderDocsList();
+    resetPreview();
+    resetTasks();
 };
 
-function renderAll() {
-    renderDocsColumn();
-    renderTasksColumn();
-    renderProjectsColumn();
-}
+// -- Project badges --
 
-// -- Documents column --
-
-function renderDocsColumn() {
-    const container = document.getElementById('dashboard-docs-content');
-    const header = container.parentElement.querySelector('.dashboard-col-header');
+function renderProjectBadges() {
+    const container = document.getElementById('dashboard-project-badges');
     const filesPerDay = dashData.filesData.days || {};
     const dayFiles = filesPerDay[selectedDay] || [];
 
-    const docs = dayFiles.filter(f => f.domain !== 'ops');
-    const ops = dayFiles.filter(f => f.domain === 'ops');
+    // Count per project for this day
+    const counts = {};
+    for (const f of dayFiles) {
+        const p = f.project || 'other';
+        counts[p] = (counts[p] || 0) + 1;
+    }
 
+    const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+
+    if (sorted.length === 0 && selectedDay !== 'overdue') {
+        container.innerHTML = '';
+        return;
+    }
+
+    // For overdue view, show project badges from overdue tasks
+    if (selectedDay === 'overdue') {
+        const overdueCounts = {};
+        for (const t of dashData.overdue) {
+            const p = t.project || 'other';
+            overdueCounts[p] = (overdueCounts[p] || 0) + 1;
+        }
+        const overdueSorted = Object.entries(overdueCounts).sort((a, b) => b[1] - a[1]);
+        container.innerHTML = overdueSorted.map(([proj, count]) => {
+            const isActive = activeProjects.has(proj);
+            return `<button class="day-badge${isActive ? ' active' : ''}"
+                        onclick="dashToggleProject('${escapeAttr(proj)}')">
+                        <span class="day-badge-label">${escapeHtml(proj)}</span>
+                        <span class="day-badge-count">${count}</span>
+                    </button>`;
+        }).join('');
+        return;
+    }
+
+    container.innerHTML = sorted.map(([proj, count]) => {
+        const isActive = activeProjects.has(proj);
+        return `<button class="day-badge${isActive ? ' active' : ''}"
+                    onclick="dashToggleProject('${escapeAttr(proj)}')">
+                    <span class="day-badge-label">${escapeHtml(proj)}</span>
+                    <span class="day-badge-count">${count}</span>
+                </button>`;
+    }).join('');
+}
+
+window.dashToggleProject = function(proj) {
+    if (activeProjects.has(proj)) {
+        activeProjects.delete(proj);
+    } else {
+        activeProjects.add(proj);
+    }
+    renderProjectBadges();
+    renderDocsList();
+};
+
+// -- Filtered file helpers --
+
+function getFilteredDayFiles(dayKey) {
+    const filesPerDay = dashData.filesData.days || {};
+    let files = filesPerDay[dayKey] || [];
+    if (activeProjects.size > 0) {
+        files = files.filter(f => activeProjects.has(f.project));
+    }
+    return files;
+}
+
+// -- Documents list --
+
+function renderDocsList() {
+    const container = document.getElementById('dashboard-docs-content');
+    const header = document.getElementById('dashboard-docs-header');
+
+    // Overdue mode: show overdue tasks as list
+    if (selectedDay === 'overdue') {
+        let overdue = dashData.overdue;
+        if (activeProjects.size > 0) {
+            overdue = overdue.filter(t => activeProjects.has(t.project));
+        }
+        header.textContent = `Overdue Tasks (${overdue.length})`;
+        if (overdue.length === 0) {
+            container.innerHTML = '<p class="empty-state">No overdue tasks</p>';
+            return;
+        }
+        container.innerHTML = overdue.map(t => {
+            const proj = t.project || '';
+            return `
+                <a class="file-item" href="/tasks/${t.id}">
+                    <div class="file-item-name">${escapeHtml(t.task || t.title)}</div>
+                    <div class="file-item-meta">
+                        <span class="project-badge project-${proj}">${escapeHtml(proj)}</span>
+                        <span class="task-panel-status task-panel-status-blocked">${escapeHtml(t.priority || '')}</span>
+                        <span class="dashboard-overdue-days">${t.days_overdue}d overdue</span>
+                    </div>
+                </a>`;
+        }).join('');
+        return;
+    }
+
+    const dayFiles = getFilteredDayFiles(selectedDay);
     header.textContent = `Documents (${dayFiles.length})`;
 
     if (dayFiles.length === 0) {
         container.innerHTML = '<p class="empty-state">No documents</p>';
+        resetPreview();
+        resetTasks();
         return;
     }
+
+    // Group: docs first, then ops
+    const docs = dayFiles.filter(f => f.domain !== 'ops');
+    const ops = dayFiles.filter(f => f.domain === 'ops');
 
     let html = '';
 
     // Documents grouped by project
-    if (docs.length > 0) {
-        const byProject = groupBy(docs, f => f.project || 'other');
-        for (const [proj, files] of sortedEntries(byProject)) {
-            html += `<div class="dashboard-group">`;
-            html += `<div class="dashboard-group-header"><span class="project-badge project-${proj}">${escapeHtml(proj)}</span></div>`;
-            for (const f of files) {
-                html += renderDocItem(f);
-            }
-            html += `</div>`;
+    const docsByProject = groupBy(docs, f => f.project || 'other');
+    for (const [proj, files] of sortedEntries(docsByProject)) {
+        html += `<div class="day-group">`;
+        html += `<div class="day-group-header">
+            <div class="day-group-label"><span class="project-badge project-${proj}">${escapeHtml(proj)}</span></div>
+            <span class="day-group-count">${files.length}</span>
+        </div>`;
+        for (const f of files) {
+            html += renderFileItem(f);
         }
+        html += `</div>`;
     }
 
     // Project updates
     if (ops.length > 0) {
-        html += `<div class="dashboard-group">`;
-        html += `<div class="dashboard-group-header dashboard-group-label">Project Updates</div>`;
-        const byProject = groupBy(ops, f => f.project || 'other');
-        for (const [proj, files] of sortedEntries(byProject)) {
-            html += `<span class="project-badge project-${proj}" style="margin-left:8px;">${escapeHtml(proj)}</span>`;
-            for (const f of files) {
-                const context = f.ops_context && f.ops_context !== proj ? ` (${f.ops_context})` : '';
-                html += `<a class="dashboard-item dashboard-item-ops" href="${escapeHtml(f.obsidian_link)}">${escapeHtml(f.filename)}${context ? `<span class="file-item-context">${escapeHtml(context)}</span>` : ''}</a>`;
-            }
+        html += `<div class="day-group">`;
+        html += `<div class="day-group-header">
+            <div class="day-group-label">Project Updates</div>
+            <span class="day-group-count">${ops.length}</span>
+        </div>`;
+        for (const f of ops) {
+            html += renderFileItem(f, true);
         }
         html += `</div>`;
     }
 
     container.innerHTML = html;
+
+    // Auto-select first file
+    const firstFile = docs.length > 0 ? docs[0] : (ops.length > 0 ? ops[0] : null);
+    if (firstFile) {
+        dashSelectFile(firstFile.relative_path, firstFile.obsidian_link);
+    }
 }
 
-function renderDocItem(f) {
-    let name = f.filename;
-    if (/^\d{6}-/.test(name)) name = name.substring(7);
-    if (name.endsWith('.md')) name = name.slice(0, -3);
-    name = name.replace(/-/g, ' ');
+function renderFileItem(f, isOps) {
+    const isSelected = f.relative_path === selectedFilePath;
+    const selectedClass = isSelected ? ' selected' : '';
 
-    return `<a class="dashboard-item" href="/documents" title="${escapeHtml(f.relative_path)}">${escapeHtml(name)}<span class="dashboard-item-type">${escapeHtml(f.file_type)}</span></a>`;
+    let displayName = f.filename;
+    if (/^\d{6}-/.test(displayName)) {
+        displayName = displayName.substring(7);
+    }
+    if (displayName.endsWith('.md')) {
+        displayName = displayName.slice(0, -3);
+    }
+    if (!isOps) {
+        displayName = displayName.replace(/-/g, ' ');
+    }
+
+    const context = isOps && f.ops_context && f.ops_context !== f.project
+        ? `<span class="file-item-context">${escapeHtml(f.ops_context)}</span>` : '';
+
+    return `
+        <div class="file-item${selectedClass}${isOps ? ' file-item-ops' : ''}"
+             onclick="dashSelectFile('${escapeAttr(f.relative_path)}', '${escapeAttr(f.obsidian_link)}')"
+             data-path="${escapeAttr(f.relative_path)}">
+            <div class="file-item-name">${escapeHtml(displayName)}${context}</div>
+            <div class="file-item-meta">
+                ${isOps ? `<span class="project-badge project-${f.project}">${escapeHtml(f.project)}</span>` : ''}
+                <span class="file-item-domain">${escapeHtml(f.file_type)}</span>
+            </div>
+        </div>`;
 }
 
-// -- Tasks column --
+// -- File selection: preview + tasks --
 
-function renderTasksColumn() {
-    const container = document.getElementById('dashboard-tasks-content');
-    const header = container.parentElement.querySelector('.dashboard-col-header');
-    const tasks = dashData.tasks || [];
-    const overdue = dashData.overdue || [];
+window.dashSelectFile = async function(relativePath, obsidianLink) {
+    selectedFilePath = relativePath;
 
-    // Tasks due on selected day
-    const dueTasks = tasks.filter(t => t.due_date === selectedDay && t.status !== 'completed');
-    // In progress tasks
-    const inProgress = tasks.filter(t => t.status === 'in_progress');
-    // Blocked
-    const blocked = tasks.filter(t => t.status === 'blocked');
-    // Completed on selected day
-    const completed = tasks.filter(t => t.completed_date === selectedDay);
-
-    const totalShown = dueTasks.length + inProgress.length + blocked.length + overdue.length;
-    header.textContent = `Tasks (${totalShown})`;
-
-    let html = '';
-
-    if (overdue.length > 0) {
-        html += renderTaskGroup('Overdue', overdue, 'overdue');
-    }
-
-    if (dueTasks.length > 0) {
-        html += renderTaskGroup('Due', dueTasks, 'due');
-    }
-
-    if (inProgress.length > 0) {
-        html += renderTaskGroup('In Progress', inProgress, 'in_progress');
-    }
-
-    if (blocked.length > 0) {
-        html += renderTaskGroup('Blocked', blocked, 'blocked');
-    }
-
-    if (completed.length > 0) {
-        html += renderTaskGroup('Completed', completed, 'completed');
-    }
-
-    if (!html) {
-        html = '<p class="empty-state">No tasks</p>';
-    }
-
-    container.innerHTML = html;
-}
-
-function renderTaskGroup(label, tasks, type) {
-    let html = `<div class="dashboard-group">`;
-    html += `<div class="dashboard-group-header dashboard-group-label">${label} <span class="day-badge-count">${tasks.length}</span></div>`;
-    for (const t of tasks) {
-        const proj = t._project || t.project || '';
-        const title = t.task || t.title || '';
-        const daysOverdue = t.days_overdue ? `<span class="dashboard-overdue-days">${t.days_overdue}d</span>` : '';
-        html += `
-            <a class="dashboard-item dashboard-task-item" href="/tasks/${t.id}">
-                <span class="task-panel-status task-panel-status-${type === 'overdue' ? 'blocked' : t.status}">${escapeHtml(t.priority || '')}</span>
-                <span class="dashboard-task-title">${escapeHtml(title)}</span>
-                ${daysOverdue}
-                <span class="project-badge project-${proj}">${escapeHtml(proj)}</span>
-            </a>`;
-    }
-    html += `</div>`;
-    return html;
-}
-
-// -- Projects column --
-
-function renderProjectsColumn() {
-    const container = document.getElementById('dashboard-projects-content');
-    const header = container.parentElement.querySelector('.dashboard-col-header');
-    const tasks = dashData.tasks || [];
-    const filesPerDay = dashData.filesData.days || {};
-    const dayFiles = filesPerDay[selectedDay] || [];
-
-    // Collect projects with activity today or active tasks
-    const projectStats = {};
-
-    // Count files per project for this day
-    for (const f of dayFiles) {
-        const proj = f.project || 'other';
-        if (!projectStats[proj]) projectStats[proj] = { files: 0, in_progress: 0, blocked: 0, pending: 0, overdue: 0 };
-        projectStats[proj].files++;
-    }
-
-    // Count tasks per project (only active)
-    for (const t of tasks) {
-        if (t.status === 'completed') continue;
-        const proj = t._project || t.project || 'unknown';
-        if (!projectStats[proj]) projectStats[proj] = { files: 0, in_progress: 0, blocked: 0, pending: 0, overdue: 0 };
-        const s = t.status || 'pending';
-        if (projectStats[proj][s] !== undefined) {
-            projectStats[proj][s]++;
-        }
-    }
-
-    // Count overdue per project
-    for (const t of (dashData.overdue || [])) {
-        const proj = t.project || 'unknown';
-        if (!projectStats[proj]) projectStats[proj] = { files: 0, in_progress: 0, blocked: 0, pending: 0, overdue: 0 };
-        projectStats[proj].overdue++;
-    }
-
-    // Sort: projects with today's files first, then by total active tasks
-    const sorted = Object.entries(projectStats).sort((a, b) => {
-        // Files today first
-        if (b[1].files !== a[1].files) return b[1].files - a[1].files;
-        // Then by total active
-        const aTotal = a[1].in_progress + a[1].blocked + a[1].pending;
-        const bTotal = b[1].in_progress + b[1].blocked + b[1].pending;
-        return bTotal - aTotal;
+    // Update selected state in list
+    document.querySelectorAll('#dashboard-docs-content .file-item').forEach(el => {
+        el.classList.toggle('selected', el.dataset.path === relativePath);
     });
 
-    // Only show projects with activity today or active tasks
-    const activeProjects = sorted.filter(([_, s]) =>
-        s.files > 0 || s.in_progress > 0 || s.blocked > 0 || s.overdue > 0
-    );
+    // Preview header
+    const headerEl = document.getElementById('dashboard-preview-header');
+    const filename = relativePath.split('/').pop();
+    headerEl.innerHTML = `
+        <span class="preview-filename">${escapeHtml(filename)}</span>
+        <a href="${escapeAttr(obsidianLink)}" class="preview-link">Open in Obsidian</a>
+    `;
 
-    header.textContent = `Projects (${activeProjects.length})`;
+    // Load content and tasks in parallel
+    const contentEl = document.getElementById('dashboard-preview-content');
+    contentEl.innerHTML = '<p class="empty-state">Loading...</p>';
 
-    if (activeProjects.length === 0) {
-        container.innerHTML = '<p class="empty-state">No active projects</p>';
-        return;
-    }
+    const contentPromise = loadPreview(relativePath, contentEl);
+    const tasksPromise = loadTasks(relativePath);
+    await Promise.all([contentPromise, tasksPromise]);
+};
 
-    let html = '';
-    for (const [proj, stats] of activeProjects) {
-        html += `<div class="dashboard-project-card">`;
-        html += `<div class="dashboard-project-card-header"><span class="project-badge project-${proj}">${escapeHtml(proj)}</span>`;
-        if (stats.files > 0) {
-            html += `<span class="dashboard-project-stat">${stats.files} docs</span>`;
+async function loadPreview(relativePath, contentEl) {
+    try {
+        const res = await fetch(`/api/files/content?path=${encodeURIComponent(relativePath)}`);
+        if (!res.ok) {
+            const err = await res.json();
+            contentEl.innerHTML = `<p style="color: var(--cs-status-critical);">${escapeHtml(err.error || 'Failed to load')}</p>`;
+            return;
         }
-        html += `</div>`;
+        const data = await res.json();
+        contentEl.innerHTML = data.html;
+        contentEl.scrollTop = 0;
+    } catch (err) {
+        contentEl.innerHTML = `<p style="color: var(--cs-status-critical);">Error: ${escapeHtml(err.message)}</p>`;
+    }
+}
 
-        // Task summary bar
-        const parts = [];
-        if (stats.in_progress > 0) parts.push(`<span class="task-panel-status task-panel-status-in_progress">${stats.in_progress} active</span>`);
-        if (stats.blocked > 0) parts.push(`<span class="task-panel-status task-panel-status-blocked">${stats.blocked} blocked</span>`);
-        if (stats.overdue > 0) parts.push(`<span class="dashboard-overdue-days">${stats.overdue} overdue</span>`);
-        if (stats.pending > 0) parts.push(`<span class="dashboard-project-stat">${stats.pending} pending</span>`);
+async function loadTasks(documentPath) {
+    const headerEl = document.getElementById('dashboard-tasks-header');
+    const contentEl = document.getElementById('dashboard-tasks-content');
 
-        if (parts.length > 0) {
-            html += `<div class="dashboard-project-card-stats">${parts.join(' ')}</div>`;
+    const parts = documentPath.split('/');
+    const folderName = parts.length > 1 ? parts[parts.length - 2] : parts[0];
+    headerEl.textContent = `Tasks -- ${folderName}`;
+    contentEl.innerHTML = '<p class="empty-state">Loading...</p>';
+
+    try {
+        const res = await fetch(`/api/tasks?folder=${encodeURIComponent(documentPath)}`);
+        const tasks = await res.json();
+
+        if (tasks.length > 0) {
+            const ctx = tasks[0]._project || folderName;
+            headerEl.textContent = `Tasks -- ${ctx}`;
         }
 
-        html += `</div>`;
-    }
+        const active = tasks.filter(t => t.status !== 'completed');
+        if (active.length === 0) {
+            contentEl.innerHTML = '<p class="empty-state">No active tasks</p>';
+            return;
+        }
 
-    container.innerHTML = html;
+        const groups = {};
+        const statusOrder = ['in_progress', 'blocked', 'pending'];
+        for (const t of active) {
+            const s = t.status || 'pending';
+            if (!groups[s]) groups[s] = [];
+            groups[s].push(t);
+        }
+
+        const prioWeight = { critical: 0, high: 1, medium: 2, low: 3 };
+        for (const arr of Object.values(groups)) {
+            arr.sort((a, b) => (prioWeight[a.priority] || 9) - (prioWeight[b.priority] || 9));
+        }
+
+        let html = '';
+        for (const status of statusOrder) {
+            const items = groups[status];
+            if (!items || items.length === 0) continue;
+            const label = status.replace('_', ' ');
+            html += `<div class="task-panel-group-header">${escapeHtml(label)} (${items.length})</div>`;
+            for (const t of items) {
+                const dueStr = t.due_date || '';
+                const tags = (t.tags || []).slice(0, 2).join(', ');
+                html += `
+                    <a class="task-panel-item" href="/tasks/${t.id}">
+                        <div class="task-panel-item-title">${escapeHtml(t.title)}</div>
+                        <div class="task-panel-item-meta">
+                            <span class="task-panel-item-id">#${t.id}</span>
+                            <span class="task-panel-status task-panel-status-${t.status}">${escapeHtml(t.priority || '')}</span>
+                            ${tags ? `<span class="task-panel-item-tags">${escapeHtml(tags)}</span>` : ''}
+                            ${dueStr ? `<span class="task-panel-item-due">${escapeHtml(dueStr)}</span>` : ''}
+                        </div>
+                    </a>`;
+            }
+        }
+
+        contentEl.innerHTML = html;
+    } catch (err) {
+        contentEl.innerHTML = '<p class="empty-state">Failed to load tasks</p>';
+    }
+}
+
+function resetPreview() {
+    document.getElementById('dashboard-preview-header').innerHTML =
+        '<span class="preview-placeholder">Select a file to preview</span>';
+    document.getElementById('dashboard-preview-content').innerHTML =
+        '<p class="preview-empty">Click a document to see its content</p>';
+}
+
+function resetTasks() {
+    document.getElementById('dashboard-tasks-header').textContent = 'Tasks';
+    document.getElementById('dashboard-tasks-content').innerHTML =
+        '<p class="empty-state">Select a document to see related tasks</p>';
 }
 
 // -- Helpers --
@@ -313,4 +413,9 @@ function groupBy(arr, keyFn) {
 
 function sortedEntries(obj) {
     return Object.entries(obj).sort((a, b) => b[1].length - a[1].length);
+}
+
+function escapeAttr(s) {
+    if (!s) return '';
+    return s.replace(/'/g, "\\'").replace(/"/g, '&quot;');
 }

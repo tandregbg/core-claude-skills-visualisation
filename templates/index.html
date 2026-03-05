@@ -5,32 +5,39 @@
 
 {% block content %}
 
-<!-- Day navigation -->
-<div class="day-badges" id="dashboard-day-nav"></div>
+<!-- Day navigation + project badges -->
+<div class="filter-badges-row">
+    <div class="day-badges" id="dashboard-day-nav"></div>
+</div>
+<div class="filter-badges-row">
+    <div class="day-badges" id="dashboard-project-badges"></div>
+</div>
 
-<!-- Three-column layout -->
+<!-- Four-column layout: projects | documents | preview | tasks -->
 <div class="dashboard-layout">
-    <!-- Left: documents & project updates -->
-    <div class="dashboard-col dashboard-col-docs" id="dashboard-docs">
-        <div class="dashboard-col-header">Documents</div>
+    <!-- Left: document list -->
+    <div class="dashboard-col dashboard-col-docs">
+        <div class="dashboard-col-header" id="dashboard-docs-header">Documents</div>
         <div id="dashboard-docs-content">
             <p class="empty-state">Loading...</p>
         </div>
     </div>
 
-    <!-- Center: tasks -->
-    <div class="dashboard-col dashboard-col-tasks" id="dashboard-tasks">
-        <div class="dashboard-col-header">Tasks</div>
-        <div id="dashboard-tasks-content">
-            <p class="empty-state">Loading...</p>
+    <!-- Center: content preview -->
+    <div class="dashboard-col dashboard-col-preview">
+        <div class="dashboard-col-header dashboard-preview-header" id="dashboard-preview-header">
+            <span class="preview-placeholder">Select a file to preview</span>
+        </div>
+        <div id="dashboard-preview-content" class="recent-preview-content prose">
+            <p class="preview-empty">Click a document to see its content</p>
         </div>
     </div>
 
-    <!-- Right: project status -->
-    <div class="dashboard-col dashboard-col-projects" id="dashboard-projects">
-        <div class="dashboard-col-header">Projects</div>
-        <div id="dashboard-projects-content">
-            <p class="empty-state">Loading...</p>
+    <!-- Right: tasks -->
+    <div class="dashboard-col dashboard-col-tasks">
+        <div class="dashboard-col-header" id="dashboard-tasks-header">Tasks</div>
+        <div id="dashboard-tasks-content">
+            <p class="empty-state">Select a document to see related tasks</p>
         </div>
     </div>
 </div>

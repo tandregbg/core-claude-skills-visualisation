@@ -830,7 +830,7 @@ a.task-panel-item:hover {
 .dashboard-layout {
     display: flex;
     gap: var(--cs-spacing-xl);
-    height: calc(100vh - 140px);
+    height: calc(100vh - 200px);
 }
 
 .dashboard-col {
@@ -843,16 +843,16 @@ a.task-panel-item:hover {
 }
 
 .dashboard-col-docs {
+    width: 320px;
+    min-width: 280px;
+    flex-shrink: 0;
+}
+
+.dashboard-col-preview {
     flex: 1;
-    min-width: 260px;
 }
 
 .dashboard-col-tasks {
-    flex: 1;
-    min-width: 280px;
-}
-
-.dashboard-col-projects {
     width: 280px;
     min-width: 240px;
     flex-shrink: 0;
@@ -867,68 +867,23 @@ a.task-panel-item:hover {
     flex-shrink: 0;
 }
 
-.dashboard-col > div:last-child {
+.dashboard-preview-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.dashboard-col-docs > div:last-child,
+.dashboard-col-tasks > div:last-child {
     flex: 1;
     overflow-y: auto;
     padding: var(--cs-spacing-sm);
 }
 
-.dashboard-group {
-    margin-bottom: var(--cs-spacing-md);
-}
-
-.dashboard-group-header {
-    padding: var(--cs-spacing-xs) var(--cs-spacing-sm);
-}
-
-.dashboard-group-label {
-    font-size: var(--cs-font-size-body-xs);
-    font-weight: var(--cs-font-weight-medium);
-    color: var(--cs-on-surface-secondary);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    display: flex;
-    align-items: center;
-    gap: var(--cs-spacing-xs);
-}
-
-.dashboard-item {
-    display: flex;
-    align-items: center;
-    gap: var(--cs-spacing-sm);
-    padding: var(--cs-spacing-xs) var(--cs-spacing-sm) var(--cs-spacing-xs) var(--cs-spacing-lg);
-    font-size: var(--cs-font-size-body-sm);
-    color: var(--cs-on-surface-primary);
-    text-decoration: none;
-    line-height: 1.4;
-    border-radius: var(--cs-border-radius-xs);
-}
-
-.dashboard-item:hover {
-    background: var(--cs-elevation-solid-2);
-}
-
-.dashboard-item-ops {
-    border-left: 2px solid var(--cs-status-info, #4a9eff);
-    padding-left: calc(var(--cs-spacing-lg) - 2px);
-}
-
-.dashboard-item-type {
-    font-size: var(--cs-font-size-body-xs);
-    color: var(--cs-on-surface-tertiary);
-    margin-left: auto;
-    white-space: nowrap;
-}
-
-.dashboard-task-item {
-    padding-left: var(--cs-spacing-sm);
-}
-
-.dashboard-task-title {
+.dashboard-col-preview > div:last-child {
     flex: 1;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    overflow-y: auto;
+    padding: var(--cs-spacing-2xl);
 }
 
 .dashboard-overdue-days {
@@ -937,33 +892,15 @@ a.task-panel-item:hover {
     white-space: nowrap;
 }
 
-.dashboard-project-card {
-    padding: var(--cs-spacing-sm) var(--cs-spacing-md);
-    border-radius: var(--cs-border-radius-xs);
-    margin-bottom: var(--cs-spacing-xs);
+.day-badge-overdue {
+    border-color: var(--cs-status-critical, #ef4444);
+    color: var(--cs-status-critical, #ef4444);
 }
 
-.dashboard-project-card:hover {
-    background: var(--cs-elevation-solid-2);
-}
-
-.dashboard-project-card-header {
-    display: flex;
-    align-items: center;
-    gap: var(--cs-spacing-sm);
-}
-
-.dashboard-project-card-stats {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--cs-spacing-xs);
-    margin-top: 4px;
-    padding-left: var(--cs-spacing-xs);
-}
-
-.dashboard-project-stat {
-    font-size: var(--cs-font-size-body-xs);
-    color: var(--cs-on-surface-tertiary);
+.day-badge-overdue.active {
+    background: var(--cs-status-critical, #ef4444);
+    color: #fff;
+    border-color: var(--cs-status-critical, #ef4444);
 }
 
 /* === TASK DETAIL === */
