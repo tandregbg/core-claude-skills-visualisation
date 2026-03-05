@@ -301,6 +301,7 @@ function resetPreview() {
 function renderFileItem(f) {
     const isSelected = f.relative_path === selectedFilePath;
     const selectedClass = isSelected ? ' selected' : '';
+    const isOps = f.domain === 'ops';
 
     let displayName = f.filename;
     if (/^\d{6}-/.test(displayName)) {
@@ -309,13 +310,21 @@ function renderFileItem(f) {
     if (displayName.endsWith('.md')) {
         displayName = displayName.slice(0, -3);
     }
-    displayName = displayName.replace(/-/g, ' ');
+    if (!isOps) {
+        displayName = displayName.replace(/-/g, ' ');
+    }
+
+    // For ops files, show subfolder context if available
+    const context = f.ops_context || '';
+    const contextLabel = isOps && context && context !== f.project
+        ? `<span class="file-item-context">${escapeHtml(context)}</span>`
+        : '';
 
     return `
-        <div class="file-item${selectedClass}"
+        <div class="file-item${selectedClass}${isOps ? ' file-item-ops' : ''}"
              onclick="selectFile('${escapeAttr(f.relative_path)}', '${escapeAttr(f.obsidian_link)}')"
              data-path="${escapeAttr(f.relative_path)}">
-            <div class="file-item-name">${escapeHtml(displayName)}</div>
+            <div class="file-item-name">${escapeHtml(displayName)}${contextLabel}</div>
             <div class="file-item-meta">
                 <span class="project-badge project-${f.project}">${f.project}</span>
                 <span class="file-item-domain">${f.file_type}</span>

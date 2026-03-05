@@ -815,6 +815,16 @@ a.task-panel-item:hover {
     color: var(--cs-on-surface-tertiary);
 }
 
+.file-item-ops {
+    border-left: 2px solid var(--cs-status-info, #4a9eff);
+}
+
+.file-item-context {
+    font-size: 11px;
+    color: var(--cs-on-surface-tertiary);
+    margin-left: var(--cs-spacing-xs);
+}
+
 /* === TASK DETAIL === */
 
 .detail-meta {

@@ -260,6 +260,86 @@ def scan_vault_folder(vault_path, folder_path, vault_name=None):
     return files
 
 
+# Ops structure files to track for recent modifications (human-readable only)
+OPS_FILES = {
+    'README.md': 'project-update',
+    'CHANGELOG.md': 'changelog',
+}
+
+
+def scan_ops_files(vault_path, projects, vault_name=None, days=30):
+    """Scan project folders for recently modified ops structure files.
+
+    Returns list of file entries for README.md, CHANGELOG.md, _tasks.yaml,
+    _insights.yaml that were modified within the given number of days.
+    Uses mtime to determine the date.
+    """
+    if vault_name is None:
+        vault_name = os.path.basename(vault_path)
+
+    cutoff = datetime.now().timestamp() - (days * 86400)
+    files = []
+
+    for proj_name, proj_config in projects.items():
+        folder = proj_config.get('vault', '')
+        full_folder = os.path.join(vault_path, folder)
+        if not os.path.isdir(full_folder):
+            continue
+
+        # Walk folder tree for ops files
+        for root, dirs, filenames in os.walk(full_folder):
+            dirs[:] = [d for d in dirs if not d.startswith('.')]
+
+            for fname in filenames:
+                if fname not in OPS_FILES:
+                    continue
+
+                full_path = os.path.join(root, fname)
+                try:
+                    stat = os.stat(full_path)
+                    mtime = stat.st_mtime
+                    size = stat.st_size
+                except OSError:
+                    continue
+
+                if mtime < cutoff:
+                    continue
+
+                rel_to_vault = os.path.relpath(full_path, vault_path)
+                rel_to_folder = os.path.relpath(full_path, full_folder)
+
+                # Use mtime as the file date
+                file_date = datetime.fromtimestamp(mtime).date()
+
+                obsidian_file = rel_to_vault
+                if obsidian_file.endswith('.md'):
+                    obsidian_file = obsidian_file[:-3]
+                obsidian_link = f"obsidian://open?vault={quote(vault_name)}&file={quote(obsidian_file)}"
+
+                # Derive a subfolder context (e.g. "projects/sonetel-mobile-v3")
+                subfolder = os.path.relpath(root, full_folder)
+                if subfolder == '.':
+                    display_context = proj_name
+                else:
+                    display_context = subfolder.replace(os.sep, '/')
+
+                files.append({
+                    'filename': fname,
+                    'relative_path': rel_to_vault,
+                    'folder_relative_path': rel_to_folder,
+                    'date': file_date,
+                    'domain': 'ops',
+                    'file_type': OPS_FILES[fname],
+                    'obsidian_link': obsidian_link,
+                    'size': size,
+                    'mtime': mtime,
+                    'project': proj_name,
+                    'ops_context': display_context,
+                })
+
+    return files
+
+
 def scan_all_folders(vault_path, projects, vault_name=None):
     """Scan all project folders for dated files.
 

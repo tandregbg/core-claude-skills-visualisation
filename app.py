@@ -212,6 +212,22 @@ def _filter_activity(activity_data, project=None, include_private_folders=False,
     return all_files
 
 
+def _filter_activity_list(files, project=None, include_private_folders=False, projects_config=None):
+    """Filter a flat list of file entries by project selection."""
+    explicit_selection = project and project != 'all'
+    result = []
+    for f in files:
+        proj_name = f.get('project', '')
+        if explicit_selection and proj_name != project:
+            continue
+        if not explicit_selection and not include_private_folders and projects_config:
+            proj_cfg = projects_config.get(proj_name, {})
+            if not proj_cfg.get('shared_view', True):
+                continue
+        result.append(f)
+    return result
+
+
 def _serialize_date(d):
     """Convert date to ISO string for JSON."""
     if isinstance(d, date):
@@ -572,6 +588,12 @@ def api_files_recent():
     cutoff = today.toordinal() - days
 
     recent = [f for f in files if f.get('date') and f['date'].toordinal() >= cutoff]
+
+    # Include recently modified ops files (README, CHANGELOG, _tasks.yaml, _insights.yaml)
+    ops_files = activity_parser.scan_ops_files(config.VAULT_PATH, projects, config.VAULT_NAME, days=days)
+    ops_filtered = _filter_activity_list(ops_files, project, include_private, projects)
+    recent.extend(ops_filtered)
+
     recent.sort(key=lambda f: (f.get('date', date.min), f.get('mtime', 0)), reverse=True)
 
     # Group by date
