@@ -1,6 +1,6 @@
 # core-skills-visualisation
 
-> v0.3.3
+> v0.4.1
 
 Local web app for visualizing runtime data produced by the core-skills framework.
 Reads `_tasks.yaml`, `_tasks-history.md`, `_insights.yaml`, and dated markdown files from the Obsidian vault.

@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.4.1] - 2026-03-05
+
+### Added
+- **Task completion from UI:** "Mark as Done" button on task detail page and checkmark button on kanban cards. Writes back to `_tasks.yaml` (sets `status: completed`, `completed: YYMMDD`) and appends entry to `_tasks-history.md`.
+- **`POST /api/tasks/<id>/complete` endpoint:** Resolves source file from cached task data, updates YAML, writes history, invalidates cache.
+- **`parsers/task_writer.py`:** New module with `complete_task()` and `append_to_history()` -- keeps write logic separate from read-only parsers.
+- **Insight synthesis via LLM:** New `/synthesis` page runs cross-folder pattern analysis on accumulated insights using Ollama (local), Anthropic, or OpenAI.
+- **`parsers/synthesis.py`:** Provider abstraction (`_call_ollama`, `_call_anthropic`, `_call_openai`), `call_llm()` dispatcher, `test_connection()`, `build_synthesis_prompt()`, `run_synthesis()`, JSON extraction, save/load syntheses.
+- **Synthesis API:** `GET /api/synthesis` (list), `GET /api/synthesis/<id>` (detail), `POST /api/synthesis/run` (trigger), `POST /api/llm/test` (test connection).
+- **LLM settings in Settings page:** Provider dropdown (Ollama/Anthropic/OpenAI), endpoint URL, model name, API key field, "Test Connection" button with provider-dependent field visibility.
+- **Synthesis nav link** in sidebar between Insights and Settings.
+- **`data/syntheses/`** directory for saved synthesis results (gitignored).
+
+### Changed
+- **`requirements.txt`:** Added `requests` for LLM API calls.
+- **`config.py`:** Added `llm` defaults (Ollama at `192.168.11.169:11434`, `qwen3.5:35b`) and `SYNTHESIS_DIR` constant. Default LLM timeout set to 600s for large model cold starts.
+
 ## [0.4.0] - 2026-03-05
 
 ### Added

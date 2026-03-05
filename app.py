@@ -12,6 +12,8 @@ from parsers import tasks as task_parser
 from parsers import history as history_parser
 from parsers import activity as activity_parser
 from parsers import insights as insights_parser
+from parsers import task_writer
+from parsers import synthesis as synthesis_module
 
 app = Flask(__name__)
 app.json.ensure_ascii = False
@@ -341,6 +343,11 @@ def settings_page():
     return render_template('settings.html')
 
 
+@app.route('/synthesis')
+def synthesis_page():
+    return render_template('synthesis.html')
+
+
 # ---------------------------------------------------------------------------
 # API routes -- settings
 # ---------------------------------------------------------------------------
@@ -387,11 +394,25 @@ def api_settings_get():
             'file_count': _count_project_files(config.VAULT_PATH, cfg.get('vault', '')),
         }
 
+    # LLM settings (mask API keys for display)
+    llm = dict(_settings.get('llm', config._SETTINGS_DEFAULTS.get('llm', {})))
+    if llm.get('anthropic_api_key'):
+        llm['anthropic_api_key_set'] = True
+        llm['anthropic_api_key'] = ''
+    else:
+        llm['anthropic_api_key_set'] = False
+    if llm.get('openai_api_key'):
+        llm['openai_api_key_set'] = True
+        llm['openai_api_key'] = ''
+    else:
+        llm['openai_api_key_set'] = False
+
     return jsonify({
         'vault_path': _settings.get('vault_path', config.VAULT_PATH),
         'vault_name': _settings.get('vault_name', config.VAULT_NAME),
         'scan_depth': _settings.get('scan_depth', 2),
         'projects': result_projects,
+        'llm': llm,
     })
 
 
@@ -415,6 +436,11 @@ def api_settings_post():
             if proj_name not in _settings['projects']:
                 _settings['projects'][proj_name] = {}
             _settings['projects'][proj_name].update(proj_updates)
+
+    if 'llm' in data:
+        if 'llm' not in _settings:
+            _settings['llm'] = {}
+        _settings['llm'].update(data['llm'])
 
     config.save_settings(_settings)
     _invalidate_cache()
@@ -565,6 +591,52 @@ def api_task_detail(task_id):
             return jsonify(result)
 
     return jsonify({'error': 'Task not found'}), 404
+
+
+@app.route('/api/tasks/<int:task_id>/complete', methods=['POST'])
+def api_task_complete(task_id):
+    """Mark a task as completed. Writes to _tasks.yaml and _tasks-history.md."""
+    today = date.today()
+    yymmdd = int(today.strftime('%y%m%d'))
+
+    # Find the task to get _source_file
+    _, all_tasks = _get_tasks_cached(today)
+    task_data = None
+    for t in all_tasks:
+        if t.get('id') == task_id:
+            task_data = t
+            break
+
+    if task_data is None:
+        return jsonify({'error': 'Task not found'}), 404
+
+    source_file = task_data.get('_source_file', '')
+    if not source_file:
+        data = request.get_json(force=True) if request.data else {}
+        source_file = data.get('source_file', '')
+
+    if not source_file:
+        return jsonify({'error': 'Cannot determine source file for task'}), 400
+
+    yaml_path = os.path.join(config.VAULT_PATH, source_file)
+    try:
+        updated_task = task_writer.complete_task(yaml_path, task_id, yymmdd)
+    except FileNotFoundError as e:
+        return jsonify({'error': str(e)}), 404
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400
+    except Exception as e:
+        return jsonify({'error': f'Failed to update task: {e}'}), 500
+
+    # Append to history
+    context = task_data.get('_project', task_data.get('project', 'unknown'))
+    try:
+        task_writer.append_to_history(config.HISTORY_FILE, task_data, context, yymmdd)
+    except Exception as e:
+        return jsonify({'error': f'Task updated but history write failed: {e}'}), 500
+
+    _invalidate_cache()
+    return jsonify({'status': 'ok', 'task': {'id': task_id, 'status': 'completed', 'completed': yymmdd}})
 
 
 @app.route('/api/tasks/overdue')
@@ -769,6 +841,54 @@ def api_insights():
         'total': len(filtered),
         'this_month': this_month_count,
     })
+
+
+@app.route('/api/synthesis')
+def api_synthesis_list():
+    """Return list of saved syntheses."""
+    syntheses = synthesis_module.load_syntheses(config.SYNTHESIS_DIR)
+    return jsonify(syntheses)
+
+
+@app.route('/api/synthesis/<synthesis_id>')
+def api_synthesis_detail(synthesis_id):
+    """Return a single synthesis result."""
+    result = synthesis_module.load_synthesis(synthesis_id, config.SYNTHESIS_DIR)
+    if result is None:
+        return jsonify({'error': 'Synthesis not found'}), 404
+    return jsonify(result)
+
+
+@app.route('/api/synthesis/run', methods=['POST'])
+def api_synthesis_run():
+    """Run a new synthesis on current insights. Synchronous -- may take 30-120s."""
+    data = request.get_json(force=True) if request.data else {}
+    project = data.get('project', 'all')
+    insight_type = data.get('type', 'all')
+    status = data.get('status', 'active')
+
+    filters = {'project': project, 'type': insight_type, 'status': status}
+
+    projects, _ = _get_tasks_cached()
+    all_insights = _get_insights_cached(projects)
+    filtered = insights_parser.filter_insights(all_insights, project, insight_type, status)
+
+    if not filtered:
+        return jsonify({'error': 'No insights match the current filters'}), 400
+
+    try:
+        result = synthesis_module.run_synthesis(_settings, filtered, filters)
+        synthesis_module.save_synthesis(result, config.SYNTHESIS_DIR)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/llm/test', methods=['POST'])
+def api_llm_test():
+    """Test LLM connection with current settings."""
+    result = synthesis_module.test_connection(_settings)
+    return jsonify(result)
 
 
 @app.route('/api/refresh', methods=['POST'])
