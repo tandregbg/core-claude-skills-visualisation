@@ -108,6 +108,7 @@
                     <span class="status-badge status-${t.status}">${t.status}</span>
                     <span class="project-badge project-${t.project}">${t.project}</span>
                     ${t.private ? '<span class="private-badge">private</span>' : ''}
+                    ${t.status !== 'completed' ? '<button class="btn btn-primary btn-sm" id="complete-btn" style="margin-left: auto;">Mark as Done</button>' : ''}
                 </div>
 
                 <h1 class="page-title" style="margin-top: var(--cs-spacing-lg);">#${t.id} ${escapeHtml(t.task)}</h1>
@@ -138,6 +139,40 @@
             ${notesHtml}
             ${historyHtml}
         `;
+
+        // Bind complete button
+        const completeBtn = document.getElementById('complete-btn');
+        if (completeBtn) {
+            completeBtn.addEventListener('click', () => completeTask(t));
+        }
+    }
+
+    async function completeTask(t) {
+        if (!confirm(`Mark task #${t.id} "${t.task}" as done?`)) return;
+
+        const btn = document.getElementById('complete-btn');
+        btn.disabled = true;
+        btn.textContent = 'Completing...';
+
+        try {
+            const res = await fetch(`/api/tasks/${t.id}/complete`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ source_file: t._source_file }),
+            });
+            const data = await res.json();
+            if (res.ok && data.status === 'ok') {
+                loadTaskDetail();
+            } else {
+                alert(data.error || 'Failed to complete task');
+                btn.disabled = false;
+                btn.textContent = 'Mark as Done';
+            }
+        } catch (err) {
+            alert('Failed to complete task: ' + err.message);
+            btn.disabled = false;
+            btn.textContent = 'Mark as Done';
+        }
     }
 </script>
 {% endblock %}

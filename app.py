@@ -1,6 +1,7 @@
 """core-skills-visualisation -- Flask app for visualizing vault runtime data."""
 
 import os
+import re
 import time
 import json
 from datetime import date, datetime
@@ -12,6 +13,8 @@ from parsers import tasks as task_parser
 from parsers import history as history_parser
 from parsers import activity as activity_parser
 from parsers import insights as insights_parser
+from parsers import task_writer
+from parsers import synthesis as synthesis_module
 
 app = Flask(__name__)
 app.json.ensure_ascii = False
@@ -27,11 +30,39 @@ def inject_version():
 _settings = config.load_settings()
 
 # ---------------------------------------------------------------------------
+# Markdown post-processing
+# ---------------------------------------------------------------------------
+
+_CHECKBOX_RE = re.compile(
+    r'<li>\s*\[([ xX~])\]\s*',
+)
+
+
+def _render_checkboxes(html):
+    """Convert [ ], [x], [~] in list items to HTML checkbox elements."""
+    def _replace(m):
+        ch = m.group(1).lower()
+        if ch == 'x':
+            return '<li class="task-item task-done"><input type="checkbox" checked disabled> '
+        elif ch == '~':
+            return '<li class="task-item task-progress"><input type="checkbox" disabled> '
+        else:
+            return '<li class="task-item"><input type="checkbox" disabled> '
+    return _CHECKBOX_RE.sub(_replace, html)
+
+
+def _render_markdown(raw):
+    """Convert raw markdown to HTML with post-processing."""
+    html = md.markdown(raw, extensions=['tables', 'fenced_code', 'nl2br'])
+    return _render_checkboxes(html)
+
+
+# ---------------------------------------------------------------------------
 # Cache layer -- mtime-based invalidation
 # ---------------------------------------------------------------------------
 
 _cache = {
-    'tasks': {'data': None, 'projects': None, 'mtime': 0},
+    'tasks': {'data': None, 'projects': None, 'scan_time': 0},
     'history': {'data': None, 'mtime': 0},
     'activity': {'data': None, 'scan_time': 0},
     'insights': {'data': None, 'scan_time': 0},
@@ -46,21 +77,28 @@ def _file_mtime(path):
 
 
 def _get_tasks_cached(today=None):
-    """Return (projects, enriched_tasks) with mtime-based cache.
+    """Return (projects, enriched_tasks) with TTL-based cache.
 
-    Projects are merged from _tasks.yaml registry + auto-discovered
-    ops-structured folders in the vault.  Settings project overrides
-    (enabled, shared_view) are applied on top.
+    Uses scan_tasks() to aggregate all _tasks.yaml files across the vault.
+    Projects are merged from root registry + auto-discovered ops-structured
+    folders.  Settings project overrides (enabled, shared_view) are applied.
     """
-    current_mtime = _file_mtime(config.TASKS_FILE)
-    if _cache['tasks']['data'] is not None and current_mtime == _cache['tasks']['mtime']:
+    now = time.time()
+    if _cache['tasks']['data'] is not None and (now - _cache['tasks'].get('scan_time', 0)) < config.CACHE_TTL:
         return _cache['tasks']['projects'], _cache['tasks']['data']
 
-    projects, raw_tasks, _ = task_parser.load_tasks_file(config.TASKS_FILE)
+    # Load registered projects from root file (for registry + discovery seed)
+    try:
+        root_projects, _, _ = task_parser.load_tasks_file(config.TASKS_FILE)
+    except Exception:
+        root_projects = {}
 
-    # Auto-discover ops-structured folders and merge with registered projects
+    # Auto-discover ops-structured folders and merge
     scan_depth = _settings.get('scan_depth', 2)
-    projects = activity_parser.discover_projects(config.VAULT_PATH, projects, scan_depth=scan_depth)
+    projects = activity_parser.discover_projects(config.VAULT_PATH, root_projects, scan_depth=scan_depth)
+
+    # Scan all _tasks.yaml files across the vault
+    _, raw_tasks = task_parser.scan_tasks(config.VAULT_PATH, projects)
 
     # Apply settings overrides (enabled/shared_view) on top of discovered projects
     settings_projects = _settings.get('projects', {})
@@ -77,7 +115,7 @@ def _get_tasks_cached(today=None):
     enriched = [task_parser.enrich_task(t, today or date.today()) for t in raw_tasks]
     _cache['tasks']['projects'] = projects
     _cache['tasks']['data'] = enriched
-    _cache['tasks']['mtime'] = current_mtime
+    _cache['tasks']['scan_time'] = now
     return projects, enriched
 
 
@@ -119,7 +157,7 @@ def _get_insights_cached(projects):
 
 def _invalidate_cache():
     """Force cache invalidation."""
-    _cache['tasks']['mtime'] = 0
+    _cache['tasks']['scan_time'] = 0
     _cache['tasks']['data'] = None
     _cache['history']['mtime'] = 0
     _cache['history']['data'] = None
@@ -134,13 +172,81 @@ def _invalidate_cache():
 # ---------------------------------------------------------------------------
 
 def _filter_tasks(tasks, project=None, include_private=False):
-    """Filter tasks by project and privacy."""
+    """Filter tasks by project and privacy.  Uses _project (derived) field for matching.
+
+    When a specific project is selected (not 'all'), private tasks within that
+    project are always shown -- the user explicitly chose to look at it.
+    """
     result = tasks
-    if project and project != 'all':
-        result = [t for t in result if t.get('project') == project]
-    if not include_private:
+    explicit_project = project and project != 'all'
+    if explicit_project:
+        result = [t for t in result if t.get('_project') == project or t.get('project') == project]
+    if not include_private and not explicit_project:
         result = [t for t in result if not t.get('private', False)]
     return result
+
+
+def _filter_tasks_by_folder(tasks, document_path):
+    """Filter tasks to those from the nearest ancestor _tasks.yaml of a document.
+
+    Given a document path like '_contacts/prashant/260305-file.md', finds tasks
+    whose _source_file directory is the best (deepest) ancestor match.
+
+    When no _tasks.yaml ancestor is found (e.g. contact folders without tasks),
+    falls back to searching tasks whose title or tags mention the folder name.
+    """
+    import posixpath
+    doc_dir = posixpath.dirname(document_path.replace(os.sep, '/'))
+
+    # Collect all unique _source_file directories and their tasks
+    source_dirs = {}  # dir -> [tasks]
+    for t in tasks:
+        src = t.get('_source_file', '')
+        if src:
+            src_dir = posixpath.dirname(src.replace(os.sep, '/'))
+        else:
+            continue
+        source_dirs.setdefault(src_dir, []).append(t)
+
+    # Find the deepest _source_file directory that is an ancestor of (or equal to) doc_dir
+    best_match = None
+    best_len = -1
+    for src_dir in source_dirs:
+        if not src_dir:  # skip root _tasks.yaml (empty dirname)
+            continue
+        if doc_dir == src_dir or doc_dir.startswith(src_dir + '/'):
+            if len(src_dir) > best_len:
+                best_match = src_dir
+                best_len = len(src_dir)
+
+    if best_match is not None:
+        return source_dirs[best_match]
+
+    # No _tasks.yaml ancestor found -- search by folder name in task content
+    # Extract the context name from path (e.g. 'tim-hansen' from '_contacts/tim-hansen')
+    folder_name = posixpath.basename(doc_dir)
+    if not folder_name:
+        return []
+
+    # Search for tasks mentioning this name in title, tags, or notes
+    name_lower = folder_name.lower().replace('-', ' ').replace('_', ' ')
+    name_parts = name_lower.split()
+
+    matched = []
+    for t in tasks:
+        title = (t.get('title') or t.get('task') or '').lower()
+        tags = [tag.lower() for tag in (t.get('tags') or [])]
+        notes_text = ' '.join(
+            (n.get('text', '') if isinstance(n, dict) else str(n))
+            for n in (t.get('notes') or [])
+        ).lower()
+
+        # Match if all name parts appear in title, tags, or notes
+        searchable = f"{title} {' '.join(tags)} {notes_text}"
+        if all(part in searchable for part in name_parts):
+            matched.append(t)
+
+    return matched
 
 
 def _filter_activity(activity_data, project=None, include_private_folders=False, projects_config=None):
@@ -163,6 +269,22 @@ def _filter_activity(activity_data, project=None, include_private_folders=False,
     return all_files
 
 
+def _filter_activity_list(files, project=None, include_private_folders=False, projects_config=None):
+    """Filter a flat list of file entries by project selection."""
+    explicit_selection = project and project != 'all'
+    result = []
+    for f in files:
+        proj_name = f.get('project', '')
+        if explicit_selection and proj_name != project:
+            continue
+        if not explicit_selection and not include_private_folders and projects_config:
+            proj_cfg = projects_config.get(proj_name, {})
+            if not proj_cfg.get('shared_view', True):
+                continue
+        result.append(f)
+    return result
+
+
 def _serialize_date(d):
     """Convert date to ISO string for JSON."""
     if isinstance(d, date):
@@ -181,6 +303,10 @@ def _serialize_task(t):
     # Serialize note dates
     notes = result.get('notes') or []
     result['notes'] = notes
+    # Ensure distributed task fields are present
+    result.setdefault('_source_file', '')
+    result.setdefault('_project', result.get('project', 'unknown'))
+    result.setdefault('_display_id', '#{}'.format(result.get('id', '?')))
     return result
 
 
@@ -216,9 +342,19 @@ def insights_page():
     return render_template('insights.html')
 
 
-@app.route('/recent')
-def recent_page():
-    return render_template('recent.html')
+@app.route('/documents')
+def documents_page():
+    return render_template('documents.html')
+
+
+@app.route('/projects')
+def projects_page():
+    return render_template('projects.html')
+
+
+@app.route('/projects/<path:name>')
+def project_detail_page(name):
+    return render_template('projects.html', project_name=name)
 
 
 @app.route('/tasks/<int:task_id>')
@@ -234,6 +370,11 @@ def help_page():
 @app.route('/settings')
 def settings_page():
     return render_template('settings.html')
+
+
+@app.route('/synthesis')
+def synthesis_page():
+    return render_template('synthesis.html')
 
 
 # ---------------------------------------------------------------------------
@@ -282,11 +423,25 @@ def api_settings_get():
             'file_count': _count_project_files(config.VAULT_PATH, cfg.get('vault', '')),
         }
 
+    # LLM settings (mask API keys for display)
+    llm = dict(_settings.get('llm', config._SETTINGS_DEFAULTS.get('llm', {})))
+    if llm.get('anthropic_api_key'):
+        llm['anthropic_api_key_set'] = True
+        llm['anthropic_api_key'] = ''
+    else:
+        llm['anthropic_api_key_set'] = False
+    if llm.get('openai_api_key'):
+        llm['openai_api_key_set'] = True
+        llm['openai_api_key'] = ''
+    else:
+        llm['openai_api_key_set'] = False
+
     return jsonify({
         'vault_path': _settings.get('vault_path', config.VAULT_PATH),
         'vault_name': _settings.get('vault_name', config.VAULT_NAME),
         'scan_depth': _settings.get('scan_depth', 2),
         'projects': result_projects,
+        'llm': llm,
     })
 
 
@@ -310,6 +465,11 @@ def api_settings_post():
             if proj_name not in _settings['projects']:
                 _settings['projects'][proj_name] = {}
             _settings['projects'][proj_name].update(proj_updates)
+
+    if 'llm' in data:
+        if 'llm' not in _settings:
+            _settings['llm'] = {}
+        _settings['llm'].update(data['llm'])
 
     config.save_settings(_settings)
     _invalidate_cache()
@@ -363,15 +523,56 @@ def api_projects():
     return jsonify(enabled)
 
 
+@app.route('/api/projects/<path:name>')
+def api_project_detail(name):
+    """Return detailed info about a single project's ops structure."""
+    projects, all_tasks = _get_tasks_cached()
+    if name not in projects:
+        return jsonify({'error': 'Project not found'}), 404
+
+    detail = activity_parser.get_project_detail(
+        config.VAULT_PATH, name, projects[name], config.VAULT_NAME
+    )
+
+    # Serialize dates
+    for m in detail['meetings']:
+        m['date'] = _serialize_date(m['date'])
+    for cf in detail.get('contact_folders', []):
+        if cf.get('latest_date'):
+            cf['latest_date'] = _serialize_date(cf['latest_date'])
+    dr = detail['stats'].get('date_range')
+    if dr:
+        dr['earliest'] = _serialize_date(dr['earliest'])
+        dr['latest'] = _serialize_date(dr['latest'])
+
+    # Add project tasks
+    project_tasks = _filter_tasks(all_tasks, name, include_private=False)
+    detail['tasks'] = [_serialize_task(t) for t in project_tasks]
+
+    return jsonify(detail)
+
+
 @app.route('/api/tasks')
 def api_tasks():
-    """Return filtered tasks list."""
+    """Return filtered tasks list.
+
+    Optional 'folder' param: a vault-relative file path. When provided,
+    returns only tasks from the nearest ancestor _tasks.yaml to that path.
+    This scopes tasks to the correct context (e.g. a contact folder rather
+    than the entire parent project).
+    """
     project = request.args.get('project', 'all')
     include_private = request.args.get('private', 'false') == 'true'
+    folder = request.args.get('folder', '')
     today = date.today()
 
     projects, all_tasks = _get_tasks_cached(today)
-    filtered = _filter_tasks(all_tasks, project, include_private)
+
+    if folder:
+        # Find tasks from the nearest _tasks.yaml ancestor of the document path
+        filtered = _filter_tasks_by_folder(all_tasks, folder)
+    else:
+        filtered = _filter_tasks(all_tasks, project, include_private)
     return jsonify([_serialize_task(t) for t in filtered])
 
 
@@ -419,6 +620,52 @@ def api_task_detail(task_id):
             return jsonify(result)
 
     return jsonify({'error': 'Task not found'}), 404
+
+
+@app.route('/api/tasks/<int:task_id>/complete', methods=['POST'])
+def api_task_complete(task_id):
+    """Mark a task as completed. Writes to _tasks.yaml and _tasks-history.md."""
+    today = date.today()
+    yymmdd = int(today.strftime('%y%m%d'))
+
+    # Find the task to get _source_file
+    _, all_tasks = _get_tasks_cached(today)
+    task_data = None
+    for t in all_tasks:
+        if t.get('id') == task_id:
+            task_data = t
+            break
+
+    if task_data is None:
+        return jsonify({'error': 'Task not found'}), 404
+
+    source_file = task_data.get('_source_file', '')
+    if not source_file:
+        data = request.get_json(force=True) if request.data else {}
+        source_file = data.get('source_file', '')
+
+    if not source_file:
+        return jsonify({'error': 'Cannot determine source file for task'}), 400
+
+    yaml_path = os.path.join(config.VAULT_PATH, source_file)
+    try:
+        updated_task = task_writer.complete_task(yaml_path, task_id, yymmdd)
+    except FileNotFoundError as e:
+        return jsonify({'error': str(e)}), 404
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400
+    except Exception as e:
+        return jsonify({'error': f'Failed to update task: {e}'}), 500
+
+    # Append to history
+    context = task_data.get('_project', task_data.get('project', 'unknown'))
+    try:
+        task_writer.append_to_history(config.HISTORY_FILE, task_data, context, yymmdd)
+    except Exception as e:
+        return jsonify({'error': f'Task updated but history write failed: {e}'}), 500
+
+    _invalidate_cache()
+    return jsonify({'status': 'ok', 'task': {'id': task_id, 'status': 'completed', 'completed': yymmdd}})
 
 
 @app.route('/api/tasks/overdue')
@@ -507,6 +754,16 @@ def api_files_recent():
     cutoff = today.toordinal() - days
 
     recent = [f for f in files if f.get('date') and f['date'].toordinal() >= cutoff]
+
+    # Include recently modified ops files (README, CHANGELOG, _tasks.yaml, _insights.yaml)
+    ops_files = activity_parser.scan_ops_files(config.VAULT_PATH, projects, config.VAULT_NAME, days=days)
+    ops_filtered = _filter_activity_list(ops_files, project, include_private, projects)
+    recent.extend(ops_filtered)
+
+    # Include _Dashboard*.md files from vault root
+    dashboard_files = activity_parser.scan_dashboard_files(config.VAULT_PATH, config.VAULT_NAME, days=days)
+    recent.extend(dashboard_files)
+
     recent.sort(key=lambda f: (f.get('date', date.min), f.get('mtime', 0)), reverse=True)
 
     # Group by date
@@ -517,9 +774,20 @@ def api_files_recent():
             grouped[day_key] = []
         grouped[day_key].append(_serialize_file(f))
 
+    # Aggregate counts for filter badges
+    project_counts = {}
+    type_counts = {}
+    for f in recent:
+        p = f.get('project', 'other')
+        project_counts[p] = project_counts.get(p, 0) + 1
+        t = f.get('file_type', 'other')
+        type_counts[t] = type_counts.get(t, 0) + 1
+
     return jsonify({
         'days': grouped,
         'total': len(recent),
+        'project_counts': project_counts,
+        'type_counts': type_counts,
     })
 
 
@@ -546,7 +814,7 @@ def api_file_content():
         with open(full_path, 'r', encoding='utf-8') as f:
             raw = f.read()
 
-        html = md.markdown(raw, extensions=['tables', 'fenced_code', 'nl2br'])
+        html = _render_markdown(raw)
         return jsonify({
             'path': rel_path,
             'raw_length': len(raw),
@@ -554,6 +822,95 @@ def api_file_content():
         })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
+_EXPORT_CSS_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                'static', 'css', 'export.css')
+
+
+def _read_export_css():
+    """Read export.css and return its contents (cached after first read)."""
+    if not hasattr(_read_export_css, '_cache'):
+        with open(_EXPORT_CSS_PATH, 'r', encoding='utf-8') as f:
+            _read_export_css._cache = f.read()
+    return _read_export_css._cache
+
+
+def _build_export_html(rel_path):
+    """Convert a vault markdown file to a standalone HTML document.
+
+    Returns (html_string, filename) or raises an exception.
+    """
+    full_path = os.path.normpath(os.path.join(config.VAULT_PATH, rel_path))
+    if not full_path.startswith(os.path.normpath(config.VAULT_PATH)):
+        raise PermissionError('Path outside vault')
+    if not os.path.isfile(full_path):
+        raise FileNotFoundError('File not found')
+
+    with open(full_path, 'r', encoding='utf-8') as f:
+        raw = f.read()
+
+    body_html = _render_markdown(raw)
+    css = _read_export_css()
+    filename = os.path.basename(rel_path).replace('.md', '')
+
+    page = f'''<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>{filename}</title>
+<style>
+{css}
+</style>
+</head>
+<body>
+<span class="doc-title">{filename}</span>
+{body_html}
+</body>
+</html>'''
+    return page, filename
+
+
+@app.route('/api/files/export')
+def api_file_export():
+    """Return a standalone HTML document for download/email."""
+    rel_path = request.args.get('path', '')
+    if not rel_path or not rel_path.endswith('.md'):
+        return 'Invalid path', 400
+    try:
+        page, _ = _build_export_html(rel_path)
+        response = app.make_response(page)
+        response.headers['Content-Type'] = 'text/html; charset=utf-8'
+        return response
+    except PermissionError:
+        return 'Path outside vault', 403
+    except FileNotFoundError:
+        return 'File not found', 404
+    except Exception as e:
+        return str(e), 500
+
+
+@app.route('/api/files/pdf')
+def api_file_pdf():
+    """Return a PDF rendering of a vault markdown file."""
+    rel_path = request.args.get('path', '')
+    if not rel_path or not rel_path.endswith('.md'):
+        return 'Invalid path', 400
+    try:
+        from weasyprint import HTML as WeasyHTML
+        page, filename = _build_export_html(rel_path)
+        pdf_bytes = WeasyHTML(string=page).write_pdf()
+        response = app.make_response(pdf_bytes)
+        response.headers['Content-Type'] = 'application/pdf'
+        response.headers['Content-Disposition'] = f'inline; filename="{filename}.pdf"'
+        return response
+    except PermissionError:
+        return 'Path outside vault', 403
+    except FileNotFoundError:
+        return 'File not found', 404
+    except Exception as e:
+        app.logger.error('PDF generation failed: %s', e)
+        return f'PDF generation failed: {e}', 500
 
 
 @app.route('/api/history')
@@ -582,6 +939,10 @@ def api_insights():
 
     type_counts = insights_parser.aggregate_type_counts(filtered)
     monthly = insights_parser.aggregate_monthly_counts(filtered)
+    tag_counts = insights_parser.aggregate_tag_counts(filtered)
+    context_counts = insights_parser.aggregate_context_counts(filtered)
+    type_context_matrix = insights_parser.aggregate_type_context_matrix(filtered)
+    type_tag_matrix = insights_parser.aggregate_type_tag_matrix(filtered)
 
     # Count this month
     today = date.today()
@@ -594,10 +955,62 @@ def api_insights():
     return jsonify({
         'insights': [insights_parser.serialize_insight(i) for i in filtered],
         'type_counts': type_counts,
+        'tag_counts': tag_counts,
+        'context_counts': context_counts,
+        'type_context_matrix': type_context_matrix,
+        'type_tag_matrix': type_tag_matrix,
         'monthly': monthly,
         'total': len(filtered),
         'this_month': this_month_count,
     })
+
+
+@app.route('/api/synthesis')
+def api_synthesis_list():
+    """Return list of saved syntheses."""
+    syntheses = synthesis_module.load_syntheses(config.SYNTHESIS_DIR)
+    return jsonify(syntheses)
+
+
+@app.route('/api/synthesis/<synthesis_id>')
+def api_synthesis_detail(synthesis_id):
+    """Return a single synthesis result."""
+    result = synthesis_module.load_synthesis(synthesis_id, config.SYNTHESIS_DIR)
+    if result is None:
+        return jsonify({'error': 'Synthesis not found'}), 404
+    return jsonify(result)
+
+
+@app.route('/api/synthesis/run', methods=['POST'])
+def api_synthesis_run():
+    """Run a new synthesis on current insights. Synchronous -- may take 30-120s."""
+    data = request.get_json(force=True) if request.data else {}
+    project = data.get('project', 'all')
+    insight_type = data.get('type', 'all')
+    status = data.get('status', 'active')
+
+    filters = {'project': project, 'type': insight_type, 'status': status}
+
+    projects, _ = _get_tasks_cached()
+    all_insights = _get_insights_cached(projects)
+    filtered = insights_parser.filter_insights(all_insights, project, insight_type, status)
+
+    if not filtered:
+        return jsonify({'error': 'No insights match the current filters'}), 400
+
+    try:
+        result = synthesis_module.run_synthesis(_settings, filtered, filters)
+        synthesis_module.save_synthesis(result, config.SYNTHESIS_DIR)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/llm/test', methods=['POST'])
+def api_llm_test():
+    """Test LLM connection with current settings."""
+    result = synthesis_module.test_connection(_settings)
+    return jsonify(result)
 
 
 @app.route('/api/refresh', methods=['POST'])

@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block title %}Documents -- core-skills{% endblock %}
+{% block breadcrumb %}Documents{% endblock %}
+
+{% block content %}
+
+<!-- Project filter badges -->
+<div class="filter-badges-row">
+    <div class="day-badges" id="project-badges">
+        <!-- Rendered by JS -->
+    </div>
+    <div class="badge-separator"></div>
+    <select id="days-select" class="filter-select">
+        <option value="3">Last 3 days</option>
+        <option value="7" selected>Last 7 days</option>
+        <option value="14">Last 14 days</option>
+        <option value="30">Last 30 days</option>
+    </select>
+    <span class="file-count-label" id="file-count"></span>
+</div>
+
+<!-- Document type filter badges -->
+<div class="filter-badges-row">
+    <div class="day-badges" id="type-badges">
+        <!-- Rendered by JS -->
+    </div>
+</div>
+
+<!-- Day badges -->
+<div id="day-badges" class="day-badges"></div>
+
+<!-- Two-column layout: file list + content/tasks stacked -->
+<div class="documents-layout documents-layout-2col">
+    <!-- Left: file list grouped by day -->
+    <div id="file-list" class="recent-file-list">
+        <p class="empty-state">Loading...</p>
+    </div>
+
+    <!-- Right: content + tasks stacked -->
+    <div class="content-stack">
+        <div class="recent-preview">
+            <div id="preview-header" class="recent-preview-header">
+                <span class="preview-placeholder">Select a file to preview</span>
+                <a id="preview-obsidian-link" href="#" class="preview-link hidden">Open in Obsidian</a>
+            </div>
+            <div id="preview-content" class="recent-preview-content prose">
+                <p class="preview-empty">Click a file on the left to see its content here</p>
+            </div>
+        </div>
+
+        <div class="card" id="tasks-table-card">
+            <div class="card-header">
+                <span id="tasks-panel-title">Tasks</span>
+            </div>
+            <div id="tasks-panel-content">
+                <p class="empty-state">Select a document to see related tasks</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/documents.js') }}?v={{ v }}"></script>
+{% endblock %}

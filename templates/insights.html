@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block title %}Insights -- core-skills{% endblock %}
+{% block breadcrumb %}Insights{% endblock %}
+
+{% block content %}
+
+<!-- Type toggle badges -->
+<div class="filter-badges-row">
+    <div class="day-badges" id="type-badges">
+        <!-- Rendered by JS -->
+    </div>
+    <div class="badge-separator"></div>
+    <select id="status-filter" class="filter-select">
+        <option value="active">Active</option>
+        <option value="all">All statuses</option>
+        <option value="superseded">Superseded</option>
+        <option value="archived">Archived</option>
+    </select>
+</div>
+
+<!-- Context filter badges -->
+<div class="filter-badges-row">
+    <div class="day-badges" id="context-badges">
+        <!-- Rendered by JS -->
+    </div>
+</div>
+
+<!-- Type x Tag pivot heatmap -->
+<div class="card" id="pivot-card">
+    <div class="card-header">
+        <span>Type x Tag</span>
+        <span id="insights-count" class="file-count-label"></span>
+    </div>
+    <div class="pivot-wrapper" id="type-tag-pivot">
+        <!-- Rendered by JS -->
+    </div>
+</div>
+
+<!-- Insights list (shown when pivot cell clicked) -->
+<div class="card" id="insights-list-card" style="display:none;">
+    <div class="card-header">
+        <span id="insights-list-title">Insights</span>
+        <button class="btn-sm" id="insights-list-close">Clear filter</button>
+    </div>
+    <div id="insights-list">
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/insights.js') }}?v={{ v }}"></script>
+{% endblock %}

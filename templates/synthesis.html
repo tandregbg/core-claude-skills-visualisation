@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block title %}Synthesis -- core-skills{% endblock %}
+{% block breadcrumb %}Synthesis{% endblock %}
+
+{% block content %}
+<div class="page-title-row">
+    <h1 class="page-title">Insight Synthesis</h1>
+</div>
+
+<!-- Run synthesis controls -->
+<div class="card">
+    <div class="card-header">Run New Synthesis</div>
+    <div class="settings-form">
+        <div class="settings-row">
+            <div class="settings-field">
+                <label class="settings-label" for="synth-project">Project</label>
+                <select id="synth-project" class="filter-select">
+                    <option value="all">All projects</option>
+                </select>
+            </div>
+            <div class="settings-field">
+                <label class="settings-label" for="synth-type">Insight type</label>
+                <select id="synth-type" class="filter-select">
+                    <option value="all">All types</option>
+                    <option value="decision">Decision</option>
+                    <option value="preference">Preference</option>
+                    <option value="learning">Learning</option>
+                    <option value="opportunity">Opportunity</option>
+                    <option value="pattern">Pattern</option>
+                </select>
+            </div>
+            <div class="settings-field">
+                <label class="settings-label" for="synth-status">Status</label>
+                <select id="synth-status" class="filter-select">
+                    <option value="active">Active</option>
+                    <option value="all">All</option>
+                </select>
+            </div>
+        </div>
+        <div class="settings-field settings-field-action">
+            <button id="run-synthesis-btn" class="btn btn-primary">Run Synthesis</button>
+            <span class="settings-hint" id="synth-provider-info"></span>
+            <span class="settings-hint" id="synth-status-msg"></span>
+        </div>
+    </div>
+</div>
+
+<!-- Current synthesis result -->
+<div class="card" id="synth-result-card" style="display:none;">
+    <div class="card-header">
+        <span id="synth-result-title">Synthesis Result</span>
+        <span class="file-count-label" id="synth-result-meta"></span>
+    </div>
+    <div id="synth-result-content"></div>
+</div>
+
+<!-- Past syntheses -->
+<div class="card">
+    <div class="card-header">
+        <span>Past Syntheses</span>
+        <span class="file-count-label" id="synth-list-count"></span>
+    </div>
+    <div id="synth-list">
+        <p class="empty-state">Loading...</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/synthesis.js') }}?v={{ v }}"></script>
+{% endblock %}

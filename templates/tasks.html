@@ -75,5 +75,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', filename='js/task-board.js') }}"></script>
+<script src="{{ url_for('static', filename='js/task-board.js') }}?v={{ v }}"></script>
 {% endblock %}

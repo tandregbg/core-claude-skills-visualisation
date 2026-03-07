@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+
+{% block title %}Settings -- core-skills{% endblock %}
+{% block breadcrumb %}Settings{% endblock %}
+
+{% block head %}
+<style>.sidebar-controls { display: none !important; }</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-title-row">
+    <h1 class="page-title">Settings</h1>
+</div>
+
+<!-- Vault Configuration -->
+<div class="card">
+    <div class="card-header">Vault Configuration</div>
+    <div class="settings-form">
+        <div class="settings-field">
+            <label class="settings-label" for="vault-path">Vault path</label>
+            <input type="text" id="vault-path" class="settings-input" readonly>
+            <span class="settings-hint">Set via .env file (VAULT_PATH)</span>
+        </div>
+        <div class="settings-field">
+            <label class="settings-label" for="vault-name">Vault name</label>
+            <input type="text" id="vault-name" class="settings-input" placeholder="Tomas">
+            <span class="settings-hint">Used for Obsidian links</span>
+        </div>
+    </div>
+</div>
+
+<!-- Scanning -->
+<div class="card">
+    <div class="card-header">Scanning</div>
+    <div class="settings-form">
+        <div class="settings-row">
+            <div class="settings-field">
+                <label class="settings-label" for="scan-depth">Scan depth</label>
+                <select id="scan-depth" class="filter-select">
+                    <option value="1">1 -- Top-level only</option>
+                    <option value="2">2 -- One level of nesting</option>
+                </select>
+                <span class="settings-hint">How deep to look for project folders</span>
+            </div>
+            <div class="settings-field settings-field-action">
+                <button id="rescan-btn" class="btn btn-secondary">Re-scan</button>
+                <span class="settings-hint" id="scan-status"></span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Projects -->
+<div class="card">
+    <div class="card-header">Projects</div>
+    <div class="settings-batch-actions">
+        <button id="enable-all-btn" class="btn btn-secondary btn-sm">Enable all</button>
+        <button id="disable-all-btn" class="btn btn-secondary btn-sm">Disable all</button>
+        <span class="settings-hint" id="project-count"></span>
+    </div>
+    <table class="data-table" id="projects-table">
+        <thead>
+            <tr>
+                <th style="width: 60px;">Enabled</th>
+                <th>Name</th>
+                <th>Path</th>
+                <th style="width: 70px; text-align: right;">Files</th>
+            </tr>
+        </thead>
+        <tbody id="projects-tbody">
+            <tr><td colspan="4" class="empty-state">Loading...</td></tr>
+        </tbody>
+    </table>
+</div>
+
+<!-- LLM Configuration -->
+<div class="card">
+    <div class="card-header">LLM Configuration</div>
+    <div class="settings-form">
+        <div class="settings-field">
+            <label class="settings-label" for="llm-provider">Provider</label>
+            <select id="llm-provider" class="filter-select">
+                <option value="ollama">Ollama (local)</option>
+                <option value="anthropic">Anthropic</option>
+                <option value="openai">OpenAI</option>
+            </select>
+        </div>
+        <div class="settings-field" id="llm-endpoint-field">
+            <label class="settings-label" for="llm-endpoint">Endpoint URL</label>
+            <input type="text" id="llm-endpoint" class="settings-input" placeholder="http://localhost:11434">
+        </div>
+        <div class="settings-field" id="llm-model-field">
+            <label class="settings-label" for="llm-model">Model</label>
+            <input type="text" id="llm-model" class="settings-input" placeholder="qwen3.5:35b">
+        </div>
+        <div class="settings-field" id="llm-apikey-field" style="display:none;">
+            <label class="settings-label" for="llm-apikey">API Key</label>
+            <input type="password" id="llm-apikey" class="settings-input" placeholder="sk-...">
+            <span class="settings-hint" id="llm-apikey-hint"></span>
+        </div>
+        <div class="settings-field settings-field-action">
+            <button id="llm-test-btn" class="btn btn-secondary">Test Connection</button>
+            <span class="settings-hint" id="llm-test-status"></span>
+        </div>
+    </div>
+</div>
+
+<!-- Save bar -->
+<div class="settings-save-bar" id="save-bar">
+    <span class="settings-save-status" id="save-status"></span>
+    <button id="save-btn" class="btn btn-primary">Save settings</button>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/settings.js') }}?v={{ v }}"></script>
+{% endblock %}

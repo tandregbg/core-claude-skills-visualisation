@@ -267,11 +267,16 @@ function renderCard(t) {
         ? `<span class="overdue-days">${t.days_overdue}d overdue</span>`
         : (t.due_display ? `<span class="meta-text">${t.due_display}</span>` : '');
 
+    const checkBtn = t.status !== 'completed'
+        ? `<button class="kanban-complete-btn" onclick="quickComplete(event, ${t.id}, '${escapeHtml(t._source_file || '')}')" title="Mark as done">&#10003;</button>`
+        : '';
+
     return `
         <a href="/tasks/${t.id}" class="kanban-card${overdueClass}">
             <div class="kanban-card-top">
                 <span class="priority-badge priority-${t.priority.toLowerCase()}">${t.priority}</span>
                 ${dueBadge}
+                ${checkBtn}
             </div>
             <div class="kanban-card-title">#${t.id} ${escapeHtml(t.task)}</div>
             <div class="kanban-card-meta">
@@ -281,6 +286,34 @@ function renderCard(t) {
             </div>
         </a>
     `;
+}
+
+async function quickComplete(event, taskId, sourceFile) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (!confirm(`Mark task #${taskId} as done?`)) return;
+
+    const btn = event.target;
+    btn.disabled = true;
+
+    try {
+        const res = await fetch(`/api/tasks/${taskId}/complete`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ source_file: sourceFile }),
+        });
+        const data = await res.json();
+        if (res.ok && data.status === 'ok') {
+            loadTasks();
+        } else {
+            alert(data.error || 'Failed to complete task');
+            btn.disabled = false;
+        }
+    } catch (err) {
+        alert('Failed to complete task: ' + err.message);
+        btn.disabled = false;
+    }
 }
 
 // ---- Table rendering ----
