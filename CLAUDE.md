@@ -32,8 +32,8 @@ templates/          Jinja2 templates
 - All API endpoints return JSON under /api/
 - Page routes return HTML templates
 
-<!-- t1k-init -->
-## T1K Project Conventions
+<!-- core-skills-init -->
+## Project Conventions
 
 ### Workflow Principles
 - **Plan before building** -- enter plan mode for any non-trivial task (3+ steps or architectural decisions). If something goes sideways, stop and re-plan
@@ -64,7 +64,7 @@ CR directory: `docs/change-requests/`
 | Other | `meetings/YYMMDD-participants-description.md` |
 
 ### Documentation Standards
-- Swedish output for T1K operational documentation (unless project specifies otherwise)
+- Swedish output for operational documentation (unless project specifies otherwise)
 - Correct Swedish characters (å, ä, ö) -- never substitute
 - Filenames: lowercase with hyphens. Only CHANGELOG.md and README.md use uppercase
 - Branch names: kebab-case. Dates: YYYY-MM-DD

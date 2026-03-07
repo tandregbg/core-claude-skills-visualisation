@@ -42,10 +42,10 @@ def _derive_project_from_path(rel_path):
     """Derive a project name from the relative path of a _tasks.yaml file.
 
     Examples:
-        '_projects/sonetel' -> 'sonetel'
-        '_projects/sonetel/projects/sonetel-mobile-v3' -> 'sonetel-mobile-v3'
-        '_projects/t1k/keychron-gandalf' -> 'keychron-gandalf'
-        '_contacts/marcus-andersson_mustaschmilen' -> 'marcus-andersson_mustaschmilen'
+        '_projects/acme' -> 'acme'
+        '_projects/acme/projects/acme-mobile-v3' -> 'acme-mobile-v3'
+        '_projects/bravo/project-x' -> 'project-x'
+        '_contacts/jane-doe_company' -> 'jane-doe_company'
         '_private' -> 'personal'
         '.' -> 'root'
     """

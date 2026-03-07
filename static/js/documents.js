@@ -306,7 +306,7 @@ function extractThreadKey(filename, project) {
     const isPrep = /^förberedelse-/.test(name) || /^preparation-/.test(name);
     name = name.replace(/^(förberedelse|preparation)-/, '');
     name = name.replace(/^(samtal|lunch|möte|meeting|call|daily)-/, '');
-    // Strip project name prefix (e.g. "sonetel-" from "sonetel-board-prep-meeting")
+    // Strip project name prefix (e.g. "acme-" from "acme-board-prep-meeting")
     if (project) {
         const projLower = project.toLowerCase();
         if (name.startsWith(projLower + '-')) {

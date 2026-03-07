@@ -125,14 +125,14 @@ New `/api/projects/<name>` endpoint returns:
 - Navigate to `/projects`
 - Verify: All discovered projects shown as cards with name, file count, last activity
 
-### Test Case 2: Project detail -- sonetel (full ops structure)
+### Test Case 2: Project detail -- full ops structure
 
-- Click sonetel project card
-- Verify: README.md loads in preview, CHANGELOG visible in sidebar, meetings listed, tasks shown in right panel, sub-projects (ai-orchestral, sonetel-mobile-v3, etc.) listed
+- Click a project card that has full ops structure
+- Verify: README.md loads in preview, CHANGELOG visible in sidebar, meetings listed, tasks shown in right panel, sub-projects listed
 
-### Test Case 3: Project detail -- dolutions (minimal structure)
+### Test Case 3: Project detail -- minimal structure
 
-- Click dolutions project card
+- Click a project card with minimal structure
 - Verify: No README/CHANGELOG/meetings but files still listed, graceful empty states
 
 ### Test Case 4: Project detail -- contacts (combined folder)

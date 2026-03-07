@@ -37,7 +37,7 @@
 
 ### Changed
 - **`requirements.txt`:** Added `requests` for LLM API calls.
-- **`config.py`:** Added `llm` defaults (Ollama at `192.168.11.169:11434`, `qwen3.5:35b`) and `SYNTHESIS_DIR` constant. Default LLM timeout set to 600s for large model cold starts.
+- **`config.py`:** Added `llm` defaults (Ollama at `localhost:11434`, `qwen3.5:35b`) and `SYNTHESIS_DIR` constant. Default LLM timeout set to 600s for large model cold starts.
 
 ## [0.4.0] - 2026-03-05
 

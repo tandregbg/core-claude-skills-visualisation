@@ -334,7 +334,7 @@ def scan_ops_files(vault_path, projects, vault_name=None, days=30):
                     obsidian_file = obsidian_file[:-3]
                 obsidian_link = f"obsidian://open?vault={quote(vault_name)}&file={quote(obsidian_file)}"
 
-                # Derive a subfolder context (e.g. "projects/sonetel-mobile-v3")
+                # Derive a subfolder context (e.g. "projects/acme-mobile-v3")
                 subfolder = os.path.relpath(root, full_folder)
                 if subfolder == '.':
                     display_context = proj_name
@@ -389,7 +389,7 @@ def scan_dashboard_files(vault_path, vault_name=None, days=30):
             obsidian_file = fname[:-3] if fname.endswith('.md') else fname
             obsidian_link = f"obsidian://open?vault={quote(vault_name)}&file={quote(obsidian_file)}"
 
-            # Label: _Dashboard.md -> "Dashboard", _Dashboard-sonetel.md -> "Dashboard (Sonetel)"
+            # Label: _Dashboard.md -> "Dashboard", _Dashboard-acme.md -> "Dashboard (Acme)"
             if fname == '_Dashboard.md':
                 label = 'Dashboard'
             else:

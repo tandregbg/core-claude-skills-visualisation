@@ -152,7 +152,7 @@ static/css/main.css     Insight type badge colors, pivot heatmap styles
 
 The Documents page (`/documents`) replaces the former Recent Updates page. It shows dated vault files (`YYMMDD-*.md`) with two filter dimensions:
 
-- **Project badges** -- toggle by project/context (e.g. sonetel, t1k, fluff). Shows file count per project.
+- **Project badges** -- toggle by project/context (e.g. acme, bravo, fluff). Shows file count per project.
 - **Document type badges** -- toggle by type (standup, conversation, board, preparation, management-weekly, etc.). Shows file count per type.
 - **Day badges** -- filter by specific day (Today, Yesterday, etc.)
 
