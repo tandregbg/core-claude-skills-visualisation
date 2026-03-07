@@ -298,31 +298,73 @@ function resetPreview() {
     document.getElementById('tasks-panel-content').innerHTML = '<p class="empty-state">Select a document to see related tasks</p>';
 }
 
-function extractThreadKey(filename) {
+function extractThreadKey(filename, project) {
     let name = filename;
+    // Normalize Unicode (macOS uses NFD decomposed forms for ö, ä, å etc.)
+    if (name.normalize) name = name.normalize('NFC');
     name = name.replace(/^\d{6}-/, '').replace(/\.md$/, '').toLowerCase();
     const isPrep = /^förberedelse-/.test(name) || /^preparation-/.test(name);
     name = name.replace(/^(förberedelse|preparation)-/, '');
     name = name.replace(/^(samtal|lunch|möte|meeting|call|daily)-/, '');
+    // Strip project name prefix (e.g. "sonetel-" from "sonetel-board-prep-meeting")
+    if (project) {
+        const projLower = project.toLowerCase();
+        if (name.startsWith(projLower + '-')) {
+            name = name.substring(projLower.length + 1);
+        }
+    }
     const tokens = name.split('-').filter(t => t !== 'tomas' && t.length > 0);
-    const key = tokens.slice(0, 2).join('-') || name;
+    const key = tokens.slice(0, 3).join('-') || name;
     return { key, isPrep };
 }
 
 function renderThreadedFiles(files) {
+    // First pass: extract keys and separate preps from mains
+    const preps = [];
+    const mains = [];
+    for (const f of files) {
+        const { key, isPrep } = extractThreadKey(f.filename, f.project);
+        f._threadKey = key;
+        if (isPrep) preps.push(f);
+        else mains.push(f);
+    }
+
+    // Second pass: match preps to mains by prefix overlap
     const threads = {};
     const threadOrder = [];
-    for (const f of files) {
-        const { key, isPrep } = extractThreadKey(f.filename);
-        if (!threads[key]) {
-            threads[key] = { prep: null, main: [] };
-            threadOrder.push(key);
+    const matchedPreps = new Set();
+
+    for (const m of mains) {
+        // Find a prep whose key is a prefix of this main's key, or vice versa
+        let bestPrep = null;
+        for (const p of preps) {
+            if (matchedPreps.has(p)) continue;
+            if (m._threadKey.startsWith(p._threadKey) || p._threadKey.startsWith(m._threadKey)) {
+                bestPrep = p;
+                break;
+            }
         }
-        if (isPrep) {
-            threads[key].prep = f;
-        } else {
-            threads[key].main.push(f);
+        const tKey = m._threadKey;
+        if (!threads[tKey]) {
+            threads[tKey] = { prep: null, main: [] };
+            threadOrder.push(tKey);
         }
+        threads[tKey].main.push(m);
+        if (bestPrep) {
+            threads[tKey].prep = bestPrep;
+            matchedPreps.add(bestPrep);
+        }
+    }
+
+    // Add unmatched preps as standalone
+    for (const p of preps) {
+        if (matchedPreps.has(p)) continue;
+        const tKey = p._threadKey;
+        if (!threads[tKey]) {
+            threads[tKey] = { prep: null, main: [] };
+            threadOrder.push(tKey);
+        }
+        threads[tKey].prep = p;
     }
 
     let html = '';
@@ -409,6 +451,7 @@ async function selectFile(relativePath, obsidianLink) {
         <span class="preview-filename">${escapeHtml(filename)}</span>
         <span class="preview-header-links">
             <span id="docs-changelog-btn"></span>
+            ${renderExportLinks(relativePath)}
             <a href="${escapeAttr(obsidianLink)}" class="preview-link">Open in Obsidian</a>
         </span>
     `;

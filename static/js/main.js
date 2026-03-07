@@ -243,3 +243,19 @@ function getProjectColor(project, type) {
     const colors = PROJECT_COLORS[project] || PROJECT_PERSONAL_COLOR;
     return colors[type || 'chart'];
 }
+
+// ---- Export / download helpers ----
+
+function downloadHtml(relativePath) {
+    window.open(`/api/files/export?path=${encodeURIComponent(relativePath)}`, '_blank');
+}
+
+function downloadPdf(relativePath) {
+    window.open(`/api/files/pdf?path=${encodeURIComponent(relativePath)}`, '_blank');
+}
+
+function renderExportLinks(relativePath) {
+    const escaped = relativePath.replace(/'/g, "\\'");
+    return `<a href="#" class="preview-link" onclick="downloadHtml('${escaped}'); return false;">HTML</a>` +
+           `<a href="#" class="preview-link" onclick="downloadPdf('${escaped}'); return false;">PDF</a>`;
+}

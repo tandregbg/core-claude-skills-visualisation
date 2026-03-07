@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.4.4] - 2026-03-06
+
+### Changed
+- **Document threading visibility:** Prep+conversation threads now use accent-colored left border, light background, dashed separator, and colored "PREP" badge instead of barely-visible gray styling.
+- **Daily dashboard skill:** Updated `skill.md` to write `_Dashboard.md` to vault root instead of vault parent directory.
+
 ## [0.4.3] - 2026-03-05
 
 ### Added

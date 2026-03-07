@@ -317,7 +317,10 @@
         const content = document.getElementById('preview-content');
 
         header.innerHTML = `<span>${escapeHtml(label || path)}</span>
-            <a id="preview-obsidian-link" href="#" class="preview-link">Open in Obsidian</a>`;
+            <span class="preview-header-links">
+                ${renderExportLinks(path)}
+                <a id="preview-obsidian-link" href="#" class="preview-link">Open in Obsidian</a>
+            </span>`;
         content.innerHTML = '<p class="preview-empty">Loading...</p>';
 
         try {

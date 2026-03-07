@@ -1,6 +1,7 @@
 """core-skills-visualisation -- Flask app for visualizing vault runtime data."""
 
 import os
+import re
 import time
 import json
 from datetime import date, datetime
@@ -27,6 +28,34 @@ def inject_version():
 
 # Load persistent settings on startup
 _settings = config.load_settings()
+
+# ---------------------------------------------------------------------------
+# Markdown post-processing
+# ---------------------------------------------------------------------------
+
+_CHECKBOX_RE = re.compile(
+    r'<li>\s*\[([ xX~])\]\s*',
+)
+
+
+def _render_checkboxes(html):
+    """Convert [ ], [x], [~] in list items to HTML checkbox elements."""
+    def _replace(m):
+        ch = m.group(1).lower()
+        if ch == 'x':
+            return '<li class="task-item task-done"><input type="checkbox" checked disabled> '
+        elif ch == '~':
+            return '<li class="task-item task-progress"><input type="checkbox" disabled> '
+        else:
+            return '<li class="task-item"><input type="checkbox" disabled> '
+    return _CHECKBOX_RE.sub(_replace, html)
+
+
+def _render_markdown(raw):
+    """Convert raw markdown to HTML with post-processing."""
+    html = md.markdown(raw, extensions=['tables', 'fenced_code', 'nl2br'])
+    return _render_checkboxes(html)
+
 
 # ---------------------------------------------------------------------------
 # Cache layer -- mtime-based invalidation
@@ -785,7 +814,7 @@ def api_file_content():
         with open(full_path, 'r', encoding='utf-8') as f:
             raw = f.read()
 
-        html = md.markdown(raw, extensions=['tables', 'fenced_code', 'nl2br'])
+        html = _render_markdown(raw)
         return jsonify({
             'path': rel_path,
             'raw_length': len(raw),
@@ -793,6 +822,95 @@ def api_file_content():
         })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
+_EXPORT_CSS_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                'static', 'css', 'export.css')
+
+
+def _read_export_css():
+    """Read export.css and return its contents (cached after first read)."""
+    if not hasattr(_read_export_css, '_cache'):
+        with open(_EXPORT_CSS_PATH, 'r', encoding='utf-8') as f:
+            _read_export_css._cache = f.read()
+    return _read_export_css._cache
+
+
+def _build_export_html(rel_path):
+    """Convert a vault markdown file to a standalone HTML document.
+
+    Returns (html_string, filename) or raises an exception.
+    """
+    full_path = os.path.normpath(os.path.join(config.VAULT_PATH, rel_path))
+    if not full_path.startswith(os.path.normpath(config.VAULT_PATH)):
+        raise PermissionError('Path outside vault')
+    if not os.path.isfile(full_path):
+        raise FileNotFoundError('File not found')
+
+    with open(full_path, 'r', encoding='utf-8') as f:
+        raw = f.read()
+
+    body_html = _render_markdown(raw)
+    css = _read_export_css()
+    filename = os.path.basename(rel_path).replace('.md', '')
+
+    page = f'''<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>{filename}</title>
+<style>
+{css}
+</style>
+</head>
+<body>
+<span class="doc-title">{filename}</span>
+{body_html}
+</body>
+</html>'''
+    return page, filename
+
+
+@app.route('/api/files/export')
+def api_file_export():
+    """Return a standalone HTML document for download/email."""
+    rel_path = request.args.get('path', '')
+    if not rel_path or not rel_path.endswith('.md'):
+        return 'Invalid path', 400
+    try:
+        page, _ = _build_export_html(rel_path)
+        response = app.make_response(page)
+        response.headers['Content-Type'] = 'text/html; charset=utf-8'
+        return response
+    except PermissionError:
+        return 'Path outside vault', 403
+    except FileNotFoundError:
+        return 'File not found', 404
+    except Exception as e:
+        return str(e), 500
+
+
+@app.route('/api/files/pdf')
+def api_file_pdf():
+    """Return a PDF rendering of a vault markdown file."""
+    rel_path = request.args.get('path', '')
+    if not rel_path or not rel_path.endswith('.md'):
+        return 'Invalid path', 400
+    try:
+        from weasyprint import HTML as WeasyHTML
+        page, filename = _build_export_html(rel_path)
+        pdf_bytes = WeasyHTML(string=page).write_pdf()
+        response = app.make_response(pdf_bytes)
+        response.headers['Content-Type'] = 'application/pdf'
+        response.headers['Content-Disposition'] = f'inline; filename="{filename}.pdf"'
+        return response
+    except PermissionError:
+        return 'Path outside vault', 403
+    except FileNotFoundError:
+        return 'File not found', 404
+    except Exception as e:
+        app.logger.error('PDF generation failed: %s', e)
+        return f'PDF generation failed: {e}', 500
 
 
 @app.route('/api/history')

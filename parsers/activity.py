@@ -2,6 +2,7 @@
 
 import os
 import re
+import unicodedata
 from datetime import datetime, date
 from collections import defaultdict
 from urllib.parse import quote
@@ -231,7 +232,7 @@ def scan_vault_folder(vault_path, folder_path, vault_name=None):
         # Skip hidden dirs and .archive
         dirs[:] = [d for d in dirs if not d.startswith('.')]
 
-        for fname in filenames:
+        for fname in (unicodedata.normalize('NFC', f) for f in filenames):
             if not fname.endswith('.md'):
                 continue
 
@@ -307,7 +308,7 @@ def scan_ops_files(vault_path, projects, vault_name=None, days=30):
         for root, dirs, filenames in os.walk(full_folder):
             dirs[:] = [d for d in dirs if not d.startswith('.')]
 
-            for fname in filenames:
+            for fname in (unicodedata.normalize('NFC', f) for f in filenames):
                 if fname not in OPS_FILES:
                     continue
 
@@ -369,7 +370,7 @@ def scan_dashboard_files(vault_path, vault_name=None, days=30):
     files = []
 
     try:
-        for fname in os.listdir(vault_path):
+        for fname in (unicodedata.normalize('NFC', f) for f in os.listdir(vault_path)):
             if not fname.startswith('_Dashboard') or not fname.endswith('.md'):
                 continue
             full_path = os.path.join(vault_path, fname)
@@ -541,7 +542,7 @@ def get_project_detail(vault_path, project_name, project_config, vault_name=None
     if os.path.isdir(meetings_dir):
         for root, dirs, filenames in os.walk(meetings_dir):
             dirs[:] = [d for d in dirs if not d.startswith('.')]
-            for fname in filenames:
+            for fname in (unicodedata.normalize('NFC', f) for f in filenames):
                 if not fname.endswith('.md'):
                     continue
                 file_date = parse_filename_date(fname)

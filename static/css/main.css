@@ -936,36 +936,40 @@ a.task-panel-item:hover {
 
 /* Document threading */
 .doc-thread {
-    border-left: 2px solid var(--cs-elevation-solid-3);
-    margin-left: var(--cs-spacing-sm);
-    margin-bottom: var(--cs-spacing-xs);
+    border-left: 3px solid var(--cs-accent, #6366f1);
+    margin-left: var(--cs-spacing-xs);
+    margin-bottom: var(--cs-spacing-sm);
+    padding-left: var(--cs-spacing-xs);
+    background: var(--cs-elevation-solid-1);
+    border-radius: 0 var(--cs-border-radius-xs) var(--cs-border-radius-xs) 0;
 }
 
 .doc-thread-prep {
-    opacity: 0.7;
+    opacity: 0.8;
+    border-bottom: 1px dashed var(--cs-elevation-solid-3);
 }
 
 .file-item-prep {
-    padding-top: 2px;
-    padding-bottom: 2px;
+    padding-top: 4px;
+    padding-bottom: 4px;
 }
 
 .file-item-prep .file-item-name {
-    font-size: var(--cs-font-size-body-xs);
-    color: var(--cs-on-surface-tertiary);
+    font-size: var(--cs-font-size-body-sm);
+    color: var(--cs-on-surface-secondary);
 }
 
 .prep-label {
     display: inline-block;
     font-size: 9px;
-    font-weight: var(--cs-font-weight-medium);
+    font-weight: var(--cs-font-weight-bold);
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    color: var(--cs-on-surface-tertiary);
-    background: var(--cs-elevation-solid-3);
-    padding: 1px 4px;
-    border-radius: 2px;
-    margin-right: 4px;
+    color: var(--cs-on-accent, #fff);
+    background: var(--cs-accent, #6366f1);
+    padding: 1px 5px;
+    border-radius: 3px;
+    margin-right: 5px;
     vertical-align: middle;
 }
 
@@ -1097,6 +1101,12 @@ a.task-panel-item:hover {
 .prose table { width: 100%; border-collapse: collapse; font-size: var(--cs-font-size-body-sm); margin: 0.5rem 0; }
 .prose th { text-align: left; font-weight: var(--cs-font-weight-semibold); padding: 0.4rem 0.6rem; border-bottom: 2px solid var(--cs-elevation-solid-3); color: var(--cs-on-surface-secondary); background: var(--cs-elevation-solid-2); }
 .prose td { padding: 0.35rem 0.6rem; border-bottom: 1px solid var(--cs-elevation-solid-3); color: var(--cs-on-surface-secondary); }
+
+/* Checkbox task items in markdown */
+.prose .task-item { list-style: none; margin-left: -1.2rem; }
+.prose .task-item input[type="checkbox"] { margin-right: 0.4rem; vertical-align: middle; }
+.prose .task-done { color: var(--cs-on-surface-tertiary); text-decoration: line-through; }
+.prose .task-progress { color: var(--cs-status-info); }
 
 /* === INSIGHT TYPE BADGES === */
 
