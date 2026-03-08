@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.5.1] - 2026-03-08
+
+### Added
+- **File drop auto-registration:** Any `.md` or `.txt` file placed directly in `_inbox/` is automatically detected and registered in `_inbox.yaml` on next load. Title derived from filename, content type detected from file contents. Source method tracked as `file_drop`. No duplicates on repeated loads.
+
 ## [0.5.0] - 2026-03-08
 
 ### Added
