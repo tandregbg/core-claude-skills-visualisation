@@ -86,27 +86,51 @@
 <div class="modal-overlay" id="quick-add-modal" style="display: none;">
     <div class="modal-content">
         <div class="modal-header">
-            <h3>Quick Add to Inbox</h3>
+            <h3>Add to Inbox</h3>
             <button class="modal-close" id="modal-close">&times;</button>
         </div>
         <div class="modal-body">
-            <div class="form-group">
-                <label for="add-title">Title</label>
-                <input type="text" id="add-title" placeholder="Brief description">
+            <div class="form-row-2col">
+                <div class="form-group">
+                    <label for="add-title">Title</label>
+                    <input type="text" id="add-title" placeholder="Brief description">
+                </div>
+                <div class="form-group">
+                    <label for="add-type">Type</label>
+                    <select id="add-type">
+                        <option value="quick_note">Quick note</option>
+                        <option value="voice_memo">Voice memo</option>
+                        <option value="email">Email</option>
+                        <option value="raw_text">Raw text</option>
+                        <option value="clipboard">Clipboard</option>
+                    </select>
+                </div>
             </div>
-            <div class="form-group">
-                <label for="add-type">Type</label>
-                <select id="add-type">
-                    <option value="quick_note">Quick note</option>
-                    <option value="voice_memo">Voice memo</option>
-                    <option value="email">Email</option>
-                    <option value="raw_text">Raw text</option>
-                    <option value="clipboard">Clipboard</option>
-                </select>
+            <div class="form-row-2col">
+                <div class="form-group">
+                    <label for="add-project">Project</label>
+                    <select id="add-project">
+                        <option value="">-- None --</option>
+                        <!-- Populated by JS from /api/projects -->
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="add-tags">Tags</label>
+                    <input type="text" id="add-tags" placeholder="comma, separated, tags">
+                </div>
             </div>
             <div class="form-group">
                 <label for="add-content">Content</label>
-                <textarea id="add-content" rows="10" placeholder="Paste content here..."></textarea>
+                <div class="drop-zone" id="drop-zone">
+                    <div class="drop-zone-prompt" id="drop-zone-prompt">
+                        Drop a file here, or paste/type below
+                    </div>
+                    <div class="drop-zone-file" id="drop-zone-file" style="display:none;">
+                        <span id="drop-zone-filename"></span>
+                        <button class="drop-zone-clear" id="drop-zone-clear">&times;</button>
+                    </div>
+                </div>
+                <textarea id="add-content" rows="10" placeholder="Paste or type content here..."></textarea>
             </div>
         </div>
         <div class="modal-footer">

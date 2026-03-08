@@ -1092,15 +1092,21 @@ def api_inbox_add():
     title = data.get('title', '').strip()
     content = data.get('content', '').strip()
     item_type = data.get('type', 'quick_note')
+    tags_raw = data.get('tags', '').strip()
+    project = data.get('project', '').strip() or None
 
     if not title:
         return jsonify({'error': 'Title is required'}), 400
     if not content:
         return jsonify({'error': 'Content is required'}), 400
 
+    # Parse comma-separated tags
+    tags = [t.strip() for t in tags_raw.split(',') if t.strip()] if tags_raw else []
+
     try:
         item = inbox_writer.create_item(
-            config.INBOX_DIR, title, content, item_type, 'web_ui'
+            config.INBOX_DIR, title, content, item_type, 'web_ui',
+            tags=tags, project=project
         )
         _invalidate_inbox_cache()
         return jsonify({'status': 'ok', 'item': item})

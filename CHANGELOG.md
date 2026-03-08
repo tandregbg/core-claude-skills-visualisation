@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.2] - 2026-03-08
+
+### Changed
+- **Inbox Add modal redesigned:** Two-column form layout with project selector (populated from `/api/projects`), comma-separated tags field, and file drop zone. Dropped files auto-fill title from filename and content into textarea. Project and tags are stored on the item and shown in the item list.
+- **Item list enriched:** Project badge and tags now visible on each inbox item in the list view.
+- **API `POST /api/inbox/add`:** Now accepts `project` and `tags` (comma-separated string) fields.
+
 ## [0.5.1] - 2026-03-08
 
 ### Added

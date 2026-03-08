@@ -117,6 +117,12 @@ function renderInboxList(items) {
         const classification = item.classification
             ? `<span class="inbox-class-badge inbox-class-${item.classification}">${escapeHtml(item.classification)}</span>`
             : '<span class="inbox-class-badge inbox-class-none">?</span>';
+        const projectBadge = item.project
+            ? `<span class="project-badge project-${item.project}">${escapeHtml(item.project)}</span>`
+            : '';
+        const tagList = (item.tags && item.tags.length > 0)
+            ? `<span class="inbox-tags-label">${item.tags.map(t => escapeHtml(t)).join(', ')}</span>`
+            : '';
 
         return `
             <div class="file-item${isSelected ? ' selected' : ''}"
@@ -126,9 +132,11 @@ function renderInboxList(items) {
                 <div class="file-item-meta">
                     <span class="${statusClass}">${escapeHtml(item.status || 'new')}</span>
                     ${classification}
+                    ${projectBadge}
                     <span class="inbox-type-label">${escapeHtml((item.type || '').replace('_', ' '))}</span>
                     <span class="inbox-date-label">${escapeHtml(item.created || '')}</span>
                 </div>
+                ${tagList ? `<div class="file-item-meta">${tagList}</div>` : ''}
             </div>
         `;
     }).join('');
@@ -285,6 +293,8 @@ async function archiveItem() {
 
 // -- Quick Add Modal --
 
+let droppedFileContent = null;
+
 function initModal() {
     const modal = document.getElementById('quick-add-modal');
     const openBtn = document.getElementById('quick-add-btn');
@@ -294,9 +304,8 @@ function initModal() {
 
     openBtn.addEventListener('click', () => {
         modal.style.display = 'flex';
-        document.getElementById('add-title').value = '';
-        document.getElementById('add-content').value = '';
-        document.getElementById('add-type').value = 'quick_note';
+        resetModal();
+        populateProjectSelect();
         document.getElementById('add-title').focus();
     });
 
@@ -308,12 +317,113 @@ function initModal() {
     });
 
     submitBtn.addEventListener('click', submitQuickAdd);
+
+    // File drop zone
+    initDropZone();
+}
+
+function resetModal() {
+    document.getElementById('add-title').value = '';
+    document.getElementById('add-content').value = '';
+    document.getElementById('add-type').value = 'quick_note';
+    document.getElementById('add-project').value = '';
+    document.getElementById('add-tags').value = '';
+    droppedFileContent = null;
+    document.getElementById('drop-zone-prompt').style.display = '';
+    document.getElementById('drop-zone-file').style.display = 'none';
+    document.getElementById('drop-zone').classList.remove('drop-zone-has-file');
+}
+
+async function populateProjectSelect() {
+    const select = document.getElementById('add-project');
+    // Keep first option ("-- None --"), remove the rest
+    while (select.options.length > 1) select.remove(1);
+
+    try {
+        const res = await fetch('/api/projects');
+        const projects = await res.json();
+        for (const name of Object.keys(projects).sort()) {
+            const opt = document.createElement('option');
+            opt.value = name;
+            opt.textContent = name;
+            select.appendChild(opt);
+        }
+    } catch (e) {
+        // Projects unavailable -- just leave the empty option
+    }
+}
+
+function initDropZone() {
+    const zone = document.getElementById('drop-zone');
+    const clearBtn = document.getElementById('drop-zone-clear');
+
+    zone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        zone.classList.add('drop-zone-active');
+    });
+
+    zone.addEventListener('dragleave', () => {
+        zone.classList.remove('drop-zone-active');
+    });
+
+    zone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        zone.classList.remove('drop-zone-active');
+
+        const file = e.dataTransfer.files[0];
+        if (!file) return;
+        handleDroppedFile(file);
+    });
+
+    clearBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        droppedFileContent = null;
+        document.getElementById('add-content').value = '';
+        document.getElementById('drop-zone-prompt').style.display = '';
+        document.getElementById('drop-zone-file').style.display = 'none';
+        zone.classList.remove('drop-zone-has-file');
+    });
+}
+
+function handleDroppedFile(file) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const content = e.target.result;
+        droppedFileContent = content;
+
+        // Fill content textarea
+        document.getElementById('add-content').value = content;
+
+        // Auto-fill title from filename if empty
+        const titleInput = document.getElementById('add-title');
+        if (!titleInput.value.trim()) {
+            let name = file.name.replace(/\.\w+$/, '').replace(/[-_]/g, ' ');
+            // Strip YYMMDD prefix
+            name = name.replace(/^\d{6}\s*/, '');
+            titleInput.value = name;
+        }
+
+        // Auto-detect type from file extension
+        const ext = file.name.split('.').pop().toLowerCase();
+        if (ext === 'eml' || ext === 'msg') {
+            document.getElementById('add-type').value = 'email';
+        }
+
+        // Show file indicator
+        document.getElementById('drop-zone-prompt').style.display = 'none';
+        document.getElementById('drop-zone-file').style.display = '';
+        document.getElementById('drop-zone-filename').textContent = file.name;
+        document.getElementById('drop-zone').classList.add('drop-zone-has-file');
+    };
+    reader.readAsText(file);
 }
 
 async function submitQuickAdd() {
     const title = document.getElementById('add-title').value.trim();
     const content = document.getElementById('add-content').value.trim();
     const itemType = document.getElementById('add-type').value;
+    const project = document.getElementById('add-project').value;
+    const tags = document.getElementById('add-tags').value.trim();
 
     if (!title) { alert('Title is required'); return; }
     if (!content) { alert('Content is required'); return; }
@@ -326,7 +436,7 @@ async function submitQuickAdd() {
         const res = await fetch('/api/inbox/add', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ title, content, type: itemType }),
+            body: JSON.stringify({ title, content, type: itemType, project, tags }),
         });
         const data = await res.json();
         if (res.ok && data.status === 'ok') {

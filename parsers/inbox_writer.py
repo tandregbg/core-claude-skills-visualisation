@@ -44,7 +44,8 @@ def _yymmdd():
     return date.today().strftime('%y%m%d')
 
 
-def create_item(inbox_dir, title, content, item_type='quick_note', source_method='web_ui'):
+def create_item(inbox_dir, title, content, item_type='quick_note',
+                source_method='web_ui', tags=None, project=None):
     """Create a new inbox item: write .md file + update _inbox.yaml.
 
     Args:
@@ -52,7 +53,9 @@ def create_item(inbox_dir, title, content, item_type='quick_note', source_method
         title: item title
         content: markdown content body
         item_type: voice_memo | quick_note | email | raw_text | clipboard
-        source_method: skill | web_ui
+        source_method: skill | web_ui | file_drop
+        tags: optional list of tag strings
+        project: optional project name for routing context
 
     Returns the new item dict with id.
     """
@@ -81,14 +84,15 @@ def create_item(inbox_dir, title, content, item_type='quick_note', source_method
         'source_method': source_method,
         'routing': {
             'target_skill': None,
-            'target_folder': None,
+            'target_folder': project,
             'confidence': None,
         },
         'processed': {
             'date': None,
             'output_file': None,
         },
-        'tags': [],
+        'tags': tags or [],
+        'project': project,
     }
 
     data['items'].append(item)
