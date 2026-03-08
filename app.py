@@ -15,6 +15,8 @@ from parsers import activity as activity_parser
 from parsers import insights as insights_parser
 from parsers import task_writer
 from parsers import synthesis as synthesis_module
+from parsers import inbox as inbox_parser
+from parsers import inbox_writer
 
 app = Flask(__name__)
 app.json.ensure_ascii = False
@@ -66,6 +68,7 @@ _cache = {
     'history': {'data': None, 'mtime': 0},
     'activity': {'data': None, 'scan_time': 0},
     'insights': {'data': None, 'scan_time': 0},
+    'inbox': {'data': None, 'scan_time': 0},
 }
 
 
@@ -155,6 +158,25 @@ def _get_insights_cached(projects):
     return data
 
 
+def _get_inbox_cached():
+    """Return (metadata, items) with TTL-based cache."""
+    now = time.time()
+    if _cache['inbox']['data'] is not None and (now - _cache['inbox']['scan_time']) < config.CACHE_TTL:
+        return _cache['inbox']['data']
+
+    metadata, items = inbox_parser.load_inbox(config.INBOX_DIR)
+    result = (metadata, items)
+    _cache['inbox']['data'] = result
+    _cache['inbox']['scan_time'] = now
+    return result
+
+
+def _invalidate_inbox_cache():
+    """Invalidate only inbox cache."""
+    _cache['inbox']['scan_time'] = 0
+    _cache['inbox']['data'] = None
+
+
 def _invalidate_cache():
     """Force cache invalidation."""
     _cache['tasks']['scan_time'] = 0
@@ -165,6 +187,8 @@ def _invalidate_cache():
     _cache['activity']['data'] = None
     _cache['insights']['scan_time'] = 0
     _cache['insights']['data'] = None
+    _cache['inbox']['scan_time'] = 0
+    _cache['inbox']['data'] = None
 
 
 # ---------------------------------------------------------------------------
@@ -365,6 +389,11 @@ def task_detail(task_id):
 @app.route('/help')
 def help_page():
     return render_template('help.html')
+
+
+@app.route('/inbox')
+def inbox_page():
+    return render_template('inbox.html')
 
 
 @app.route('/settings')
@@ -1011,6 +1040,110 @@ def api_llm_test():
     """Test LLM connection with current settings."""
     result = synthesis_module.test_connection(_settings)
     return jsonify(result)
+
+
+# ---------------------------------------------------------------------------
+# API routes -- inbox
+# ---------------------------------------------------------------------------
+
+@app.route('/api/inbox')
+def api_inbox():
+    """List inbox items, optionally filtered by status or classification."""
+    status_filter = request.args.get('status', '')
+    classification_filter = request.args.get('classification', '')
+
+    _, items = _get_inbox_cached()
+
+    filtered = items
+    if status_filter:
+        filtered = [i for i in filtered if i.get('status') == status_filter]
+    if classification_filter:
+        filtered = [i for i in filtered if (i.get('classification') or 'unclassified') == classification_filter]
+
+    stats = inbox_parser.get_inbox_stats(items)
+
+    return jsonify({
+        'items': filtered,
+        'stats': stats,
+    })
+
+
+@app.route('/api/inbox/<int:item_id>')
+def api_inbox_item(item_id):
+    """Return single inbox item with rendered content."""
+    item = inbox_parser.get_inbox_item(config.INBOX_DIR, item_id)
+    if item is None:
+        return jsonify({'error': 'Item not found'}), 404
+    return jsonify(item)
+
+
+@app.route('/api/inbox/count')
+def api_inbox_count():
+    """Return count of non-archived inbox items (for nav badge)."""
+    _, items = _get_inbox_cached()
+    count = sum(1 for i in items if i.get('status') not in ('archived',))
+    return jsonify({'count': count})
+
+
+@app.route('/api/inbox/add', methods=['POST'])
+def api_inbox_add():
+    """Create a new inbox item from the web UI."""
+    data = request.get_json(force=True)
+    title = data.get('title', '').strip()
+    content = data.get('content', '').strip()
+    item_type = data.get('type', 'quick_note')
+
+    if not title:
+        return jsonify({'error': 'Title is required'}), 400
+    if not content:
+        return jsonify({'error': 'Content is required'}), 400
+
+    try:
+        item = inbox_writer.create_item(
+            config.INBOX_DIR, title, content, item_type, 'web_ui'
+        )
+        _invalidate_inbox_cache()
+        return jsonify({'status': 'ok', 'item': item})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/inbox/<int:item_id>/classify', methods=['POST'])
+def api_inbox_classify(item_id):
+    """Update classification and routing for an inbox item."""
+    data = request.get_json(force=True)
+    classification = data.get('classification')
+    target_skill = data.get('target_skill')
+    target_folder = data.get('target_folder')
+    confidence = data.get('confidence')
+
+    if not classification:
+        return jsonify({'error': 'Classification is required'}), 400
+
+    try:
+        item = inbox_writer.update_classification(
+            config.INBOX_DIR, item_id, classification,
+            target_skill, target_folder, confidence
+        )
+        _invalidate_inbox_cache()
+        return jsonify({'status': 'ok', 'item': item})
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 404
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/inbox/<int:item_id>/archive', methods=['POST'])
+def api_inbox_archive(item_id):
+    """Archive an inbox item (move file to .archive/, update status)."""
+    try:
+        item = inbox_writer.archive_item(config.INBOX_DIR, item_id)
+        _invalidate_inbox_cache()
+        return jsonify({'status': 'ok', 'item': item})
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 404
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 
 @app.route('/api/refresh', methods=['POST'])

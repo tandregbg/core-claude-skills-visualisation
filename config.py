@@ -9,6 +9,8 @@ VAULT_NAME = os.environ.get('VAULT_NAME', os.path.basename(VAULT_PATH))
 FLASK_PORT = int(os.environ.get('FLASK_PORT', 5050))
 TASKS_FILE = os.path.join(VAULT_PATH, '_tasks.yaml')
 HISTORY_FILE = os.path.join(VAULT_PATH, '_tasks-history.md')
+INBOX_DIR = os.path.join(VAULT_PATH, '_inbox')
+INBOX_FILE = os.path.join(VAULT_PATH, '_inbox', '_inbox.yaml')
 CACHE_TTL = 30  # seconds before re-scanning vault files
 
 # Settings file lives next to app.py (gitignored)

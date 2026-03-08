@@ -35,6 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initPrivacyToggle();
     initRefreshButton();
     initAutoRefresh();
+    fetchInboxBadge();
 });
 
 // ---- Sidebar collapse ----
@@ -204,6 +205,7 @@ function setActiveNavLink() {
     document.querySelectorAll('.nav-item[data-page]').forEach(link => {
         const page = link.dataset.page;
         const isActive = (page === 'index' && path === '/') ||
+                         (page === 'inbox' && path === '/inbox') ||
                          (page === 'tasks' && path.startsWith('/tasks')) ||
                          (page === 'documents' && path === '/documents') ||
                          (page === 'activity' && path === '/activity') ||
@@ -213,6 +215,20 @@ function setActiveNavLink() {
             link.classList.add('active');
         }
     });
+}
+
+async function fetchInboxBadge() {
+    try {
+        const res = await fetch('/api/inbox/count');
+        const data = await res.json();
+        const badge = document.getElementById('inbox-nav-badge');
+        if (badge) {
+            badge.textContent = data.count || '';
+            badge.style.display = data.count > 0 ? '' : 'none';
+        }
+    } catch (e) {
+        // Silently fail
+    }
 }
 
 // ---- Shared helpers ----

@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+
+{% block title %}Inbox -- core-skills{% endblock %}
+{% block breadcrumb %}Inbox{% endblock %}
+
+{% block content %}
+
+<!-- Status filter badges -->
+<div class="filter-badges-row">
+    <div class="day-badges" id="status-badges">
+        <!-- Rendered by JS -->
+    </div>
+    <div class="badge-separator"></div>
+    <div class="day-badges" id="type-badges">
+        <!-- Rendered by JS -->
+    </div>
+    <span class="file-count-label" id="inbox-count"></span>
+    <button class="btn-primary" id="quick-add-btn" style="margin-left: auto;">+ Quick Add</button>
+</div>
+
+<!-- Two-column layout: item list + preview/actions -->
+<div class="documents-layout documents-layout-2col">
+    <!-- Left: item list -->
+    <div id="inbox-list" class="recent-file-list">
+        <p class="empty-state">Loading...</p>
+    </div>
+
+    <!-- Right: preview + classification -->
+    <div class="content-stack">
+        <div class="recent-preview">
+            <div id="preview-header" class="recent-preview-header">
+                <span class="preview-placeholder">Select an item to preview</span>
+            </div>
+            <div id="preview-content" class="recent-preview-content prose">
+                <p class="preview-empty">Click an item on the left to see its content here</p>
+            </div>
+        </div>
+
+        <div class="card" id="classify-card" style="display: none;">
+            <div class="card-header">
+                <span>Classification</span>
+            </div>
+            <div class="classify-panel">
+                <div class="classify-row">
+                    <label>Classification</label>
+                    <select id="classify-select">
+                        <option value="">-- Select --</option>
+                        <option value="transcript">Transcript</option>
+                        <option value="ops">Ops</option>
+                        <option value="task">Task</option>
+                        <option value="note">Note</option>
+                        <option value="idea">Idea</option>
+                    </select>
+                </div>
+                <div class="classify-row">
+                    <label>Route to skill</label>
+                    <select id="route-skill-select">
+                        <option value="">-- None --</option>
+                        <option value="transcript">/transcript</option>
+                        <option value="ops">/ops</option>
+                        <option value="tasks">/tasks</option>
+                    </select>
+                </div>
+                <div class="classify-row">
+                    <label>Target folder</label>
+                    <input type="text" id="route-folder-input" placeholder="vault-relative path">
+                </div>
+                <div class="classify-row">
+                    <label>Confidence</label>
+                    <div class="confidence-btns" id="confidence-btns">
+                        <button class="confidence-btn" data-value="high">High</button>
+                        <button class="confidence-btn" data-value="medium">Medium</button>
+                        <button class="confidence-btn" data-value="low">Low</button>
+                    </div>
+                </div>
+                <div class="classify-actions">
+                    <button class="btn-primary" id="save-classify-btn">Save Classification</button>
+                    <button class="btn-danger" id="archive-btn">Archive</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Add Modal -->
+<div class="modal-overlay" id="quick-add-modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Quick Add to Inbox</h3>
+            <button class="modal-close" id="modal-close">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label for="add-title">Title</label>
+                <input type="text" id="add-title" placeholder="Brief description">
+            </div>
+            <div class="form-group">
+                <label for="add-type">Type</label>
+                <select id="add-type">
+                    <option value="quick_note">Quick note</option>
+                    <option value="voice_memo">Voice memo</option>
+                    <option value="email">Email</option>
+                    <option value="raw_text">Raw text</option>
+                    <option value="clipboard">Clipboard</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="add-content">Content</label>
+                <textarea id="add-content" rows="10" placeholder="Paste content here..."></textarea>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-secondary" id="modal-cancel">Cancel</button>
+            <button class="btn-primary" id="modal-submit">Add to Inbox</button>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/inbox.js') }}?v={{ v }}"></script>
+{% endblock %}
