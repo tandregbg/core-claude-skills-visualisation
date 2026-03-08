@@ -1435,7 +1435,7 @@ a.task-panel-item:hover {
     display: flex;
     gap: var(--cs-spacing-xs);
     margin-bottom: var(--cs-spacing-lg);
-    border-bottom: 1px solid var(--cs-border);
+    border-bottom: 1px solid var(--cs-elevation-solid-3);
     padding-bottom: 0;
 }
 
@@ -1457,8 +1457,8 @@ a.task-panel-item:hover {
 }
 
 .help-tab.active {
-    color: var(--cs-primary);
-    border-bottom-color: var(--cs-primary);
+    color: var(--cs-action-primary-enabled);
+    border-bottom-color: var(--cs-action-primary-enabled);
     font-weight: 500;
 }
 
@@ -1491,7 +1491,7 @@ a.task-panel-item:hover {
     font-weight: 700;
     margin: 0 0 var(--cs-spacing-lg) 0;
     padding-bottom: var(--cs-spacing-sm);
-    border-bottom: 1px solid var(--cs-border);
+    border-bottom: 1px solid var(--cs-elevation-solid-3);
 }
 
 .markdown-body h2 {
@@ -1520,16 +1520,16 @@ a.task-panel-item:hover {
 }
 
 .markdown-body code {
-    background: var(--cs-surface-alt);
+    background: var(--cs-elevation-solid-1);
     padding: 1px 5px;
     border-radius: 3px;
     font-size: 0.9em;
 }
 
 .markdown-body pre {
-    background: var(--cs-surface-alt);
-    border: 1px solid var(--cs-border);
-    border-radius: var(--cs-radius-md);
+    background: var(--cs-elevation-solid-1);
+    border: 1px solid var(--cs-elevation-solid-3);
+    border-radius: var(--cs-border-radius-sm);
     padding: var(--cs-spacing-md);
     overflow-x: auto;
     margin: var(--cs-spacing-md) 0;
@@ -1549,24 +1549,24 @@ a.task-panel-item:hover {
 }
 
 .markdown-body th, .markdown-body td {
-    border: 1px solid var(--cs-border);
+    border: 1px solid var(--cs-elevation-solid-3);
     padding: var(--cs-spacing-xs) var(--cs-spacing-sm);
     text-align: left;
 }
 
 .markdown-body th {
-    background: var(--cs-surface-alt);
+    background: var(--cs-elevation-solid-1);
     font-weight: 600;
 }
 
 .markdown-body hr {
     border: none;
-    border-top: 1px solid var(--cs-border);
+    border-top: 1px solid var(--cs-elevation-solid-3);
     margin: var(--cs-spacing-2xl) 0;
 }
 
 .markdown-body blockquote {
-    border-left: 3px solid var(--cs-border);
+    border-left: 3px solid var(--cs-elevation-solid-3);
     margin: var(--cs-spacing-md) 0;
     padding: var(--cs-spacing-xs) var(--cs-spacing-lg);
     color: var(--cs-on-surface-secondary);
@@ -1586,16 +1586,16 @@ a.task-panel-item:hover {
 }
 
 .project-card {
-    background: var(--cs-surface-elevated);
-    border: 1px solid var(--cs-border);
-    border-radius: var(--cs-radius-lg);
+    background: var(--cs-elevation-solid-0);
+    border: 1px solid var(--cs-elevation-solid-3);
+    border-radius: var(--cs-border-radius-md);
     padding: var(--cs-spacing-lg);
     cursor: pointer;
     transition: border-color 0.15s, box-shadow 0.15s;
 }
 
 .project-card:hover {
-    border-color: var(--cs-primary);
+    border-color: var(--cs-action-primary-enabled);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
@@ -1625,7 +1625,7 @@ a.task-panel-item:hover {
 
 .back-link {
     font-size: var(--cs-font-size-body-sm);
-    color: var(--cs-primary);
+    color: var(--cs-action-primary-enabled);
     text-decoration: none;
     margin-bottom: var(--cs-spacing-sm);
     display: inline-block;
@@ -1637,7 +1637,7 @@ a.task-panel-item:hover {
 
 .project-detail-header h2 {
     margin: var(--cs-spacing-xs) 0 0;
-    font-size: var(--cs-font-size-heading-lg);
+    font-size: var(--cs-font-size-headline-lg);
 }
 
 .project-vault-path {
@@ -1655,7 +1655,7 @@ a.task-panel-item:hover {
     overflow-y: auto;
     max-height: calc(100vh - 180px);
     padding-right: var(--cs-spacing-md);
-    border-right: 1px solid var(--cs-border);
+    border-right: 1px solid var(--cs-elevation-solid-3);
 }
 
 .project-nav-section {
@@ -1680,18 +1680,18 @@ a.task-panel-item:hover {
     font-size: var(--cs-font-size-body-sm);
     color: var(--cs-on-surface);
     text-decoration: none;
-    border-radius: var(--cs-radius-sm);
+    border-radius: var(--cs-border-radius-xs);
     cursor: pointer;
     line-height: 1.4;
 }
 
 .project-nav-item:hover {
-    background: var(--cs-surface-hover);
+    background: var(--cs-elevation-solid-2);
 }
 
 .project-nav-item-active {
     background: var(--cs-primary-light, rgba(59, 130, 246, 0.1));
-    color: var(--cs-primary);
+    color: var(--cs-action-primary-enabled);
 }
 
 .file-size {
@@ -1712,9 +1712,9 @@ a.task-panel-item:hover {
 .meeting-category {
     font-size: var(--cs-font-size-body-xs);
     color: var(--cs-on-surface-secondary);
-    background: var(--cs-surface-hover);
+    background: var(--cs-elevation-solid-2);
     padding: 1px 6px;
-    border-radius: var(--cs-radius-sm);
+    border-radius: var(--cs-border-radius-xs);
     white-space: nowrap;
 }
 
@@ -1872,9 +1872,9 @@ a.task-panel-item:hover {
     padding: var(--cs-spacing-xs) var(--cs-spacing-sm);
     font-size: var(--cs-font-size-body-sm);
     font-family: inherit;
-    border: 1px solid var(--cs-border);
-    border-radius: var(--cs-radius-sm);
-    background: var(--cs-surface);
+    border: 1px solid var(--cs-elevation-solid-3);
+    border-radius: var(--cs-border-radius-xs);
+    background: var(--cs-elevation-solid-0);
     color: var(--cs-on-surface);
 }
 
@@ -1887,23 +1887,23 @@ a.task-panel-item:hover {
     padding: var(--cs-spacing-xs) var(--cs-spacing-md);
     font-size: var(--cs-font-size-body-sm);
     font-family: inherit;
-    border: 1px solid var(--cs-border);
-    border-radius: var(--cs-radius-sm);
-    background: var(--cs-surface);
+    border: 1px solid var(--cs-elevation-solid-3);
+    border-radius: var(--cs-border-radius-xs);
+    background: var(--cs-elevation-solid-0);
     color: var(--cs-on-surface-secondary);
     cursor: pointer;
     transition: all 0.15s;
 }
 
 .confidence-btn:hover {
-    border-color: var(--cs-primary);
-    color: var(--cs-primary);
+    border-color: var(--cs-action-primary-enabled);
+    color: var(--cs-action-primary-enabled);
 }
 
 .confidence-btn.active {
-    background: var(--cs-primary);
+    background: var(--cs-action-primary-enabled);
     color: #fff;
-    border-color: var(--cs-primary);
+    border-color: var(--cs-action-primary-enabled);
 }
 
 .classify-actions {
@@ -1911,7 +1911,7 @@ a.task-panel-item:hover {
     gap: var(--cs-spacing-sm);
     margin-top: var(--cs-spacing-lg);
     padding-top: var(--cs-spacing-md);
-    border-top: 1px solid var(--cs-border);
+    border-top: 1px solid var(--cs-elevation-solid-3);
 }
 
 /* Buttons */
@@ -1920,10 +1920,10 @@ a.task-panel-item:hover {
     font-size: var(--cs-font-size-body-sm);
     font-family: inherit;
     font-weight: 500;
-    background: var(--cs-primary);
+    background: var(--cs-action-primary-enabled);
     color: #fff;
     border: none;
-    border-radius: var(--cs-radius-sm);
+    border-radius: var(--cs-border-radius-xs);
     cursor: pointer;
     transition: opacity 0.15s;
 }
@@ -1936,15 +1936,15 @@ a.task-panel-item:hover {
     font-size: var(--cs-font-size-body-sm);
     font-family: inherit;
     font-weight: 500;
-    background: var(--cs-surface);
+    background: var(--cs-elevation-solid-0);
     color: var(--cs-on-surface);
-    border: 1px solid var(--cs-border);
-    border-radius: var(--cs-radius-sm);
+    border: 1px solid var(--cs-elevation-solid-3);
+    border-radius: var(--cs-border-radius-xs);
     cursor: pointer;
     transition: background 0.15s;
 }
 
-.btn-secondary:hover { background: var(--cs-surface-hover); }
+.btn-secondary:hover { background: var(--cs-elevation-solid-2); }
 
 .btn-danger {
     padding: var(--cs-spacing-xs) var(--cs-spacing-lg);
@@ -1954,7 +1954,7 @@ a.task-panel-item:hover {
     background: none;
     color: var(--cs-status-critical);
     border: 1px solid var(--cs-status-critical);
-    border-radius: var(--cs-radius-sm);
+    border-radius: var(--cs-border-radius-xs);
     cursor: pointer;
     transition: all 0.15s;
 }
@@ -1979,8 +1979,8 @@ a.task-panel-item:hover {
 }
 
 .modal-content {
-    background: var(--cs-surface-elevated);
-    border-radius: var(--cs-radius-lg);
+    background: var(--cs-elevation-solid-0);
+    border-radius: var(--cs-border-radius-md);
     width: 640px;
     max-width: 90vw;
     max-height: 85vh;
@@ -1994,12 +1994,12 @@ a.task-panel-item:hover {
     align-items: center;
     justify-content: space-between;
     padding: var(--cs-spacing-lg) var(--cs-spacing-xl);
-    border-bottom: 1px solid var(--cs-border);
+    border-bottom: 1px solid var(--cs-elevation-solid-3);
 }
 
 .modal-header h3 {
     margin: 0;
-    font-size: var(--cs-font-size-heading-sm);
+    font-size: var(--cs-font-size-headline-sm);
 }
 
 .modal-close {
@@ -2025,7 +2025,7 @@ a.task-panel-item:hover {
     justify-content: flex-end;
     gap: var(--cs-spacing-sm);
     padding: var(--cs-spacing-lg) var(--cs-spacing-xl);
-    border-top: 1px solid var(--cs-border);
+    border-top: 1px solid var(--cs-elevation-solid-3);
 }
 
 .form-group {
@@ -2047,9 +2047,9 @@ a.task-panel-item:hover {
     padding: var(--cs-spacing-sm);
     font-size: var(--cs-font-size-body-md);
     font-family: inherit;
-    border: 1px solid var(--cs-border);
-    border-radius: var(--cs-radius-sm);
-    background: var(--cs-surface);
+    border: 1px solid var(--cs-elevation-solid-3);
+    border-radius: var(--cs-border-radius-xs);
+    background: var(--cs-elevation-solid-0);
     color: var(--cs-on-surface);
     box-sizing: border-box;
 }
@@ -2070,8 +2070,8 @@ a.task-panel-item:hover {
 
 /* Drop zone */
 .drop-zone {
-    border: 2px dashed var(--cs-border);
-    border-radius: var(--cs-radius-md);
+    border: 2px dashed var(--cs-elevation-solid-3);
+    border-radius: var(--cs-border-radius-sm);
     padding: var(--cs-spacing-lg);
     text-align: center;
     margin-bottom: var(--cs-spacing-sm);
@@ -2080,7 +2080,7 @@ a.task-panel-item:hover {
 }
 
 .drop-zone-active {
-    border-color: var(--cs-primary);
+    border-color: var(--cs-action-primary-enabled);
     background: rgba(59, 130, 246, 0.05);
 }
 
