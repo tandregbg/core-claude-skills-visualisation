@@ -36,6 +36,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initRefreshButton();
     initAutoRefresh();
     fetchInboxBadge();
+    initGlobalInboxAdd();
 });
 
 // ---- Sidebar collapse ----
@@ -228,6 +229,146 @@ async function fetchInboxBadge() {
         }
     } catch (e) {
         // Silently fail
+    }
+}
+
+// ---- Global Inbox Add ----
+
+function initGlobalInboxAdd() {
+    const btn = document.getElementById('global-inbox-add');
+    const modal = document.getElementById('global-add-modal');
+    if (!btn || !modal) return;
+
+    const closeBtn = document.getElementById('global-modal-close');
+    const cancelBtn = document.getElementById('global-modal-cancel');
+    const submitBtn = document.getElementById('global-modal-submit');
+
+    btn.addEventListener('click', () => {
+        modal.style.display = 'flex';
+        _globalResetModal();
+        _globalPopulateProjects();
+        document.getElementById('global-add-title').focus();
+    });
+
+    closeBtn.addEventListener('click', () => { modal.style.display = 'none'; });
+    cancelBtn.addEventListener('click', () => { modal.style.display = 'none'; });
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) modal.style.display = 'none';
+    });
+
+    submitBtn.addEventListener('click', _globalSubmitAdd);
+
+    // Drop zone
+    _globalInitDropZone();
+}
+
+function _globalResetModal() {
+    document.getElementById('global-add-title').value = '';
+    document.getElementById('global-add-content').value = '';
+    document.getElementById('global-add-type').value = 'quick_note';
+    document.getElementById('global-add-project').value = '';
+    document.getElementById('global-add-tags').value = '';
+    _globalDroppedContent = null;
+    document.getElementById('global-drop-prompt').style.display = '';
+    document.getElementById('global-drop-file').style.display = 'none';
+    document.getElementById('global-drop-zone').classList.remove('drop-zone-has-file');
+}
+
+async function _globalPopulateProjects() {
+    const select = document.getElementById('global-add-project');
+    while (select.options.length > 1) select.remove(1);
+    try {
+        const res = await fetch('/api/projects');
+        const projects = await res.json();
+        for (const name of Object.keys(projects).sort()) {
+            const opt = document.createElement('option');
+            opt.value = name;
+            opt.textContent = name;
+            select.appendChild(opt);
+        }
+    } catch (e) {}
+}
+
+let _globalDroppedContent = null;
+
+function _globalInitDropZone() {
+    const zone = document.getElementById('global-drop-zone');
+    const clearBtn = document.getElementById('global-drop-clear');
+    if (!zone) return;
+
+    zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('drop-zone-active'); });
+    zone.addEventListener('dragleave', () => { zone.classList.remove('drop-zone-active'); });
+
+    zone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        zone.classList.remove('drop-zone-active');
+        const file = e.dataTransfer.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            _globalDroppedContent = ev.target.result;
+            document.getElementById('global-add-content').value = ev.target.result;
+
+            const titleInput = document.getElementById('global-add-title');
+            if (!titleInput.value.trim()) {
+                let name = file.name.replace(/\.\w+$/, '').replace(/[-_]/g, ' ');
+                name = name.replace(/^\d{6}\s*/, '');
+                titleInput.value = name;
+            }
+
+            document.getElementById('global-drop-prompt').style.display = 'none';
+            document.getElementById('global-drop-file').style.display = '';
+            document.getElementById('global-drop-filename').textContent = file.name;
+            zone.classList.add('drop-zone-has-file');
+        };
+        reader.readAsText(file);
+    });
+
+    clearBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        _globalDroppedContent = null;
+        document.getElementById('global-add-content').value = '';
+        document.getElementById('global-drop-prompt').style.display = '';
+        document.getElementById('global-drop-file').style.display = 'none';
+        zone.classList.remove('drop-zone-has-file');
+    });
+}
+
+async function _globalSubmitAdd() {
+    const title = document.getElementById('global-add-title').value.trim();
+    const content = document.getElementById('global-add-content').value.trim();
+    const itemType = document.getElementById('global-add-type').value;
+    const project = document.getElementById('global-add-project').value;
+    const tags = document.getElementById('global-add-tags').value.trim();
+
+    if (!title) { alert('Title is required'); return; }
+    if (!content) { alert('Content is required'); return; }
+
+    const submitBtn = document.getElementById('global-modal-submit');
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Adding...';
+
+    try {
+        const res = await fetch('/api/inbox/add', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ title, content, type: itemType, project, tags }),
+        });
+        const data = await res.json();
+        if (res.ok && data.status === 'ok') {
+            document.getElementById('global-add-modal').style.display = 'none';
+            fetchInboxBadge();
+            // If on inbox page, refresh the list
+            if (typeof loadInbox === 'function') loadInbox();
+        } else {
+            alert(data.error || 'Failed to add item');
+        }
+    } catch (err) {
+        alert('Error: ' + err.message);
+    } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Add to Inbox';
     }
 }
 

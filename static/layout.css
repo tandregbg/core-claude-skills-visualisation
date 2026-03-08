@@ -167,6 +167,31 @@ body {
     border-color: var(--cs-action-primary-enabled);
 }
 
+/* Sidebar add button */
+.sidebar-add {
+    padding: var(--cs-spacing-md) var(--cs-spacing-xl) 0;
+}
+
+.sidebar-add-btn {
+    width: 100%;
+    padding: 8px 12px;
+    font-size: var(--cs-font-size-body-sm);
+    font-family: inherit;
+    font-weight: 600;
+    color: var(--cs-action-primary-enabled);
+    background: transparent;
+    border: 1px dashed var(--cs-action-primary-enabled);
+    border-radius: var(--cs-radius-sm);
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.sidebar-add-btn:hover {
+    background: var(--cs-action-primary-enabled);
+    color: #fff;
+    border-style: solid;
+}
+
 /* Sidebar controls section (at bottom) */
 .sidebar-controls {
     margin-top: auto;
@@ -444,7 +469,8 @@ body {
 .sidebar.collapsed .sidebar-controls label span,
 .sidebar.collapsed .sidebar-control-label,
 .sidebar.collapsed .sidebar-controls select,
-.sidebar.collapsed .sidebar-btn {
+.sidebar.collapsed .sidebar-btn,
+.sidebar.collapsed .sidebar-add {
     display: none;
 }
 
@@ -503,7 +529,8 @@ body {
     .nav-item span:not(.dot),
     .sidebar-controls label span,
     .sidebar-control-label,
-    .sidebar-controls select {
+    .sidebar-controls select,
+    .sidebar-add {
         display: none;
     }
 

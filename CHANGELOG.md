@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.5.3] - 2026-03-08
+
+### Added
+- **Global "Add to Inbox" button:** `+ Add to Inbox` button in sidebar, accessible from every page. Opens modal with title, type, project, tags, content textarea, and file drop zone. No longer limited to the `/inbox` page.
+
 ## [0.5.2] - 2026-03-08
 
 ### Changed

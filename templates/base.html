@@ -74,6 +74,10 @@
                 </a>
             </div>
 
+            <div class="sidebar-add">
+                <button class="sidebar-add-btn" id="global-inbox-add" title="Add to Inbox">+ Add to Inbox</button>
+            </div>
+
             <!-- Controls at bottom of sidebar -->
             <div class="sidebar-controls">
                 <div class="sidebar-control-label">Project</div>
@@ -110,6 +114,63 @@
 
             {% block content %}{% endblock %}
         </main>
+    </div>
+
+    <!-- Global Inbox Add Modal -->
+    <div class="modal-overlay" id="global-add-modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Add to Inbox</h3>
+                <button class="modal-close" id="global-modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-row-2col">
+                    <div class="form-group">
+                        <label for="global-add-title">Title</label>
+                        <input type="text" id="global-add-title" placeholder="Brief description">
+                    </div>
+                    <div class="form-group">
+                        <label for="global-add-type">Type</label>
+                        <select id="global-add-type">
+                            <option value="quick_note">Quick note</option>
+                            <option value="voice_memo">Voice memo</option>
+                            <option value="email">Email</option>
+                            <option value="raw_text">Raw text</option>
+                            <option value="clipboard">Clipboard</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row-2col">
+                    <div class="form-group">
+                        <label for="global-add-project">Project</label>
+                        <select id="global-add-project">
+                            <option value="">-- None --</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="global-add-tags">Tags</label>
+                        <input type="text" id="global-add-tags" placeholder="comma, separated, tags">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="global-add-content">Content</label>
+                    <div class="drop-zone" id="global-drop-zone">
+                        <div class="drop-zone-prompt" id="global-drop-prompt">
+                            Drop a file here, or paste/type below
+                        </div>
+                        <div class="drop-zone-file" id="global-drop-file" style="display:none;">
+                            <span id="global-drop-filename"></span>
+                            <button class="drop-zone-clear" id="global-drop-clear">&times;</button>
+                        </div>
+                    </div>
+                    <textarea id="global-add-content" rows="10" placeholder="Paste or type content here..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" id="global-modal-cancel">Cancel</button>
+                <button class="btn-primary" id="global-modal-submit">Add to Inbox</button>
+            </div>
+        </div>
     </div>
 
     <script src="{{ url_for('static', filename='js/main.js') }}?v={{ v }}"></script>
