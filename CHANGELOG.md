@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.5.0] - 2026-03-08
+
+### Added
+- **Inbox page (`/inbox`):** Two-column layout for viewing, triaging, classifying, and archiving inbox items. Status and type filter badges, item preview with rendered markdown, classification panel with routing fields and confidence selector.
+- **Quick Add modal:** Create inbox items directly from the browser with title, type, and content fields.
+- **Nav badge:** Inbox count badge in sidebar navigation, visible on all pages, auto-updates on changes.
+- **`parsers/inbox.py`:** Parse `_inbox.yaml`, load items, read and render content files, compute stats by status/classification/type.
+- **`parsers/inbox_writer.py`:** Write operations -- create item (writes .md file + updates yaml), update classification and routing, archive (moves file to `.archive/`).
+- **6 API endpoints:** `GET /api/inbox` (list/filter), `GET /api/inbox/<id>` (detail + rendered content), `GET /api/inbox/count` (nav badge), `POST /api/inbox/add` (create), `POST /api/inbox/<id>/classify` (update classification), `POST /api/inbox/<id>/archive` (archive).
+- **Inbox cache slot:** TTL-based caching with targeted invalidation on write operations.
+- **`INBOX_DIR`, `INBOX_FILE` constants** in `config.py`.
+
 ## [0.4.4] - 2026-03-06
 
 ### Changed
