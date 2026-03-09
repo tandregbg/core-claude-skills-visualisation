@@ -139,6 +139,7 @@ body {
     font-weight: var(--cs-font-weight-medium);
     transition: all 0.15s ease;
     border-left: 3px solid transparent;
+    gap: var(--cs-spacing-md);
 }
 
 .nav-item:hover {
@@ -153,18 +154,14 @@ body {
     font-weight: var(--cs-font-weight-semibold);
 }
 
-.nav-item .dot {
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    border: 2px solid currentColor;
-    margin-right: var(--cs-spacing-md);
+.nav-icon {
     flex-shrink: 0;
+    opacity: 0.7;
 }
 
-.nav-item.active .dot {
-    background: var(--cs-action-primary-enabled);
-    border-color: var(--cs-action-primary-enabled);
+.nav-item:hover .nav-icon,
+.nav-item.active .nav-icon {
+    opacity: 1;
 }
 
 /* Sidebar add button */
@@ -457,7 +454,7 @@ body {
     transition: margin-left 0.2s ease;
 }
 
-/* Collapsed state (via JS toggle) */
+/* Collapsed state (via JS toggle or auto-collapse) */
 .sidebar.collapsed {
     width: 52px;
     padding: var(--cs-spacing-lg) 0;
@@ -465,7 +462,7 @@ body {
 
 .sidebar.collapsed .sidebar-brand h1 span:not(.logo),
 .sidebar.collapsed .nav-section-label,
-.sidebar.collapsed .nav-item span:not(.dot),
+.sidebar.collapsed .nav-item > span,
 .sidebar.collapsed .sidebar-controls label span,
 .sidebar.collapsed .sidebar-control-label,
 .sidebar.collapsed .sidebar-controls select,
@@ -482,10 +479,7 @@ body {
     justify-content: center;
     padding: var(--cs-spacing-md);
     border-left-width: 0;
-}
-
-.sidebar.collapsed .nav-item .dot {
-    margin-right: 0;
+    gap: 0;
 }
 
 .sidebar.collapsed .sidebar-controls {
@@ -510,6 +504,50 @@ body {
     margin-left: 52px;
 }
 
+/* Hover expand -- when collapsed, expand on hover */
+.sidebar.collapsed:hover {
+    width: 220px;
+    padding: var(--cs-spacing-xl) 0;
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.12);
+}
+
+.sidebar.collapsed:hover .sidebar-brand h1 span:not(.logo),
+.sidebar.collapsed:hover .nav-section-label,
+.sidebar.collapsed:hover .nav-item > span,
+.sidebar.collapsed:hover .sidebar-controls label span,
+.sidebar.collapsed:hover .sidebar-control-label,
+.sidebar.collapsed:hover .sidebar-controls select,
+.sidebar.collapsed:hover .sidebar-btn,
+.sidebar.collapsed:hover .sidebar-add {
+    display: initial;
+}
+
+.sidebar.collapsed:hover .sidebar-add {
+    display: block;
+}
+
+.sidebar.collapsed:hover .sidebar-brand {
+    padding: 0 var(--cs-spacing-xl) var(--cs-spacing-xl);
+}
+
+.sidebar.collapsed:hover .nav-item {
+    justify-content: flex-start;
+    padding: 9px var(--cs-spacing-xl);
+    border-left-width: 3px;
+    gap: var(--cs-spacing-md);
+}
+
+.sidebar.collapsed:hover .sidebar-controls {
+    padding: var(--cs-spacing-lg) var(--cs-spacing-xl);
+}
+
+.sidebar.collapsed:hover .sidebar-collapse-btn {
+    position: absolute;
+    top: 20px;
+    right: 12px;
+    margin: 0;
+}
+
 /* === RESPONSIVE === */
 
 @media (max-width: 1200px) {
@@ -526,7 +564,7 @@ body {
 
     .sidebar-brand h1 span:not(.logo),
     .nav-section-label,
-    .nav-item span:not(.dot),
+    .nav-item > span,
     .sidebar-controls label span,
     .sidebar-control-label,
     .sidebar-controls select,
@@ -537,10 +575,7 @@ body {
     .nav-item {
         justify-content: center;
         padding: var(--cs-spacing-md);
-    }
-
-    .nav-item .dot {
-        margin-right: 0;
+        gap: 0;
     }
 
     .main-content {

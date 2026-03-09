@@ -699,6 +699,15 @@
     flex-shrink: 0;
 }
 
+#dashboard-tasks-card {
+    min-height: 300px;
+}
+
+#dashboard-tasks-card #dashboard-tasks-content {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
 /* Tasks table in stacked layout */
 .tasks-inline-table {
     width: 100%;

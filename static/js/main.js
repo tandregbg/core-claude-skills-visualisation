@@ -47,8 +47,9 @@ function initSidebarToggle() {
     const layout = document.querySelector('.app-layout');
     if (!btn || !sidebar) return;
 
-    // Restore saved state
-    if (sessionStorage.getItem('sidebar-collapsed') === 'true') {
+    // Default to collapsed (auto-collapse), expand on hover is handled by CSS
+    const savedState = sessionStorage.getItem('sidebar-collapsed');
+    if (savedState === null || savedState === 'true') {
         sidebar.classList.add('collapsed');
         if (layout) layout.classList.add('sidebar-collapsed');
     }
