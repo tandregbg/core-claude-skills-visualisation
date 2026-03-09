@@ -189,6 +189,8 @@ def _invalidate_cache():
     _cache['insights']['data'] = None
     _cache['inbox']['scan_time'] = 0
     _cache['inbox']['data'] = None
+    _cache['inbox']['scan_time'] = 0
+    _cache['inbox']['data'] = None
 
 
 # ---------------------------------------------------------------------------
