@@ -1059,6 +1059,9 @@ def api_inbox():
     filtered = items
     if status_filter:
         filtered = [i for i in filtered if i.get('status') == status_filter]
+    else:
+        # By default, exclude archived items
+        filtered = [i for i in filtered if i.get('status') != 'archived']
     if classification_filter:
         filtered = [i for i in filtered if (i.get('classification') or 'unclassified') == classification_filter]
 
