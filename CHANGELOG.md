@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.5.4] - 2026-03-09
+
+### Changed
+- **Sidebar auto-collapses** by default to icon-only view. Expands on hover with smooth transition and shadow. Toggle button pins it open.
+- **SVG nav icons** for all views replacing dot indicators (dashboard, inbox, tasks, documents, projects, analytics, insights, synthesis, settings, help).
+- **Dashboard tasks card** increased minimum height (300px) with scrollable content area.
+
+### Fixed
+- **Broken CSS token references:** 39 references to non-existent tokens (`--cs-surface-elevated`, `--cs-border`, `--cs-primary`, `--cs-radius-*`, `--cs-font-size-heading-*`) mapped to actual tokens. Fixes transparent modal background, missing borders, and fallback sizing.
+- **Inbox cache not cleared by Refresh:** Global cache invalidation now includes inbox slot.
+- **Archived inbox items visible:** Default API response now excludes archived items unless explicitly filtered.
+
 ## [0.5.3] - 2026-03-08
 
 ### Added
