@@ -2,7 +2,7 @@
  * insights.js -- Insights page: type badges, context badges, type x tag pivot, detail table
  */
 
-const INSIGHT_TYPES = ['decision', 'preference', 'learning', 'opportunity', 'pattern'];
+const INSIGHT_TYPES = ['decision', 'preference', 'learning', 'opportunity', 'pattern', 'quote'];
 
 const INSIGHT_TYPE_COLORS = {
     decision:    { bg: '#dbeafe', text: '#1e40af', chart: '#3b82f6', border: '#3b82f6' },
@@ -10,6 +10,7 @@ const INSIGHT_TYPE_COLORS = {
     learning:    { bg: '#dcfce7', text: '#166534', chart: '#22c55e', border: '#22c55e' },
     opportunity: { bg: '#fef3c7', text: '#92400e', chart: '#f59e0b', border: '#f59e0b' },
     pattern:     { bg: '#f3f4f6', text: '#374151', chart: '#6b7280', border: '#6b7280' },
+    quote:       { bg: '#fff7ed', text: '#9a3412', chart: '#ea580c', border: '#ea580c' },
 };
 
 // State

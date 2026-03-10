@@ -66,6 +66,7 @@ The Insights page aggregates knowledge extracted from meetings and conversations
 | `learning` | Green | What worked or didn't |
 | `opportunity` | Amber | Ideas not yet actioned |
 | `pattern` | Gray | Recurring themes |
+| `quote` | Orange | Memorable verbatim quotes |
 
 ### How data flows
 
