@@ -178,7 +178,7 @@ body {
     color: var(--cs-action-primary-enabled);
     background: transparent;
     border: 1px dashed var(--cs-action-primary-enabled);
-    border-radius: var(--cs-radius-sm);
+    border-radius: var(--cs-border-radius-xs);
     cursor: pointer;
     transition: all 0.15s ease;
 }
