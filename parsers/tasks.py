@@ -187,8 +187,50 @@ def scan_tasks(vault_path, projects, vault_name=None):
     return projects_registry, all_tasks
 
 
+def extract_owners(task):
+    """Extract owner list from explicit field or notes[0] pattern.
+
+    Resolution order:
+    1. Explicit 'owner' field (string or list)
+    2. First note matching pattern: 'Name.' or 'Name + Name.' at start
+    3. Empty list (unassigned)
+
+    Returns list of owner name strings.
+    """
+    # 1. Explicit owner field
+    owner_field = task.get('owner')
+    if owner_field:
+        if isinstance(owner_field, list):
+            return [str(o).strip() for o in owner_field if o]
+        return [str(owner_field).strip()]
+
+    # 2. Parse from first note
+    notes = task.get('notes', []) or []
+    if notes:
+        first_note = notes[0]
+        # Handle both string notes and dict notes
+        if isinstance(first_note, dict):
+            first_note = first_note.get('note', '')
+        if isinstance(first_note, str):
+            # Match: "Name." or "Name + Name." or "Name + Name + Name."
+            # Also handles "All team" and "Team"
+            m = re.match(r'^((?:[A-Z][a-z]+)(?:\s*\+\s*[A-Z][a-z]+)*)\b', first_note)
+            if m:
+                raw = m.group(1)
+                # Skip generic non-person words
+                if raw.lower() in ('new', 'done', 'fixed', 'pending', 'active',
+                                   'ongoing', 'waiting', 'released', 'confirmed',
+                                   'identified', 'resolved', 'decision', 'updated',
+                                   'planerad', 'projekt', 'ansvariga', 'ansvarig',
+                                   'prio', 'alla', 'alla team'):
+                    return []
+                return [n.strip() for n in raw.split('+')]
+
+    return []
+
+
 def enrich_task(task, today=None):
-    """Add computed fields to a task dict: due_date, is_overdue, days_overdue, due_display."""
+    """Add computed fields: due_date, is_overdue, days_overdue, due_display, _owners."""
     if today is None:
         today = date.today()
 
@@ -217,6 +259,9 @@ def enrich_task(task, today=None):
 
     # Notes count
     t['notes_count'] = len(t.get('notes', []) or [])
+
+    # Owner extraction
+    t['_owners'] = extract_owners(t)
 
     return t
 
@@ -310,3 +355,84 @@ def get_overdue_tasks(tasks):
     overdue = [t for t in tasks if t.get('is_overdue')]
     overdue.sort(key=lambda t: t.get('days_overdue', 0), reverse=True)
     return overdue
+
+
+def get_owner_stats(tasks):
+    """Return owner -> {active, completed, blocked, p0} counts from enriched tasks."""
+    stats = {}
+    for t in tasks:
+        owners = t.get('_owners', [])
+        if not owners:
+            owners = ['Unassigned']
+        is_active = t.get('status') not in ('completed', 'cancelled')
+        is_completed = t.get('status') == 'completed'
+        is_blocked = t.get('status') == 'blocked'
+        is_p0 = t.get('priority') == 'P0'
+
+        for owner in owners:
+            if owner not in stats:
+                stats[owner] = {'active': 0, 'completed': 0, 'blocked': 0, 'p0': 0}
+            if is_active:
+                stats[owner]['active'] += 1
+            if is_completed:
+                stats[owner]['completed'] += 1
+            if is_blocked:
+                stats[owner]['blocked'] += 1
+            if is_p0 and is_active:
+                stats[owner]['p0'] += 1
+
+    return stats
+
+
+def get_project_summary(tasks, my_name=None):
+    """Return per-project summary for dashboard cards.
+
+    Each entry: {project, active, blocked, p0, p1, overdue, my_count, completed_week}
+    """
+    today = date.today()
+    week_ago = today.toordinal() - 7
+    projects = {}
+
+    for t in tasks:
+        proj = t.get('_project', t.get('project', 'unknown'))
+        if proj not in projects:
+            projects[proj] = {
+                'project': proj,
+                'active': 0,
+                'blocked': 0,
+                'p0': 0,
+                'p1': 0,
+                'overdue': 0,
+                'my_count': 0,
+                'completed_week': 0,
+                'total': 0,
+            }
+        p = projects[proj]
+        p['total'] += 1
+
+        status = t.get('status', 'pending')
+        is_active = status not in ('completed', 'cancelled')
+
+        if is_active:
+            p['active'] += 1
+        if status == 'blocked':
+            p['blocked'] += 1
+        if is_active and t.get('priority') == 'P0':
+            p['p0'] += 1
+        if is_active and t.get('priority') == 'P1':
+            p['p1'] += 1
+        if t.get('is_overdue'):
+            p['overdue'] += 1
+        if status == 'completed':
+            cd = t.get('completed_date')
+            if cd and cd.toordinal() >= week_ago:
+                p['completed_week'] += 1
+
+        if my_name and is_active:
+            owners = t.get('_owners', [])
+            if my_name in owners:
+                p['my_count'] += 1
+
+    # Sort by active count descending
+    result = sorted(projects.values(), key=lambda x: x['active'], reverse=True)
+    return result

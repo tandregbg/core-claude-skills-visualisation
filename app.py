@@ -333,6 +333,7 @@ def _serialize_task(t):
     result.setdefault('_source_file', '')
     result.setdefault('_project', result.get('project', 'unknown'))
     result.setdefault('_display_id', '#{}'.format(result.get('id', '?')))
+    result.setdefault('_owners', [])
     return result
 
 
@@ -587,23 +588,36 @@ def api_project_detail(name):
 def api_tasks():
     """Return filtered tasks list.
 
-    Optional 'folder' param: a vault-relative file path. When provided,
-    returns only tasks from the nearest ancestor _tasks.yaml to that path.
-    This scopes tasks to the correct context (e.g. a contact folder rather
-    than the entire parent project).
+    Optional params:
+    - folder: vault-relative file path (scopes to nearest ancestor _tasks.yaml)
+    - project: filter by project name ('all' = no filter)
+    - private: include private tasks
+    - owner: filter by owner name (case-insensitive)
+    - hide_completed: 'true' to exclude completed/cancelled tasks (default: false)
     """
     project = request.args.get('project', 'all')
     include_private = request.args.get('private', 'false') == 'true'
     folder = request.args.get('folder', '')
+    owner = request.args.get('owner', '')
+    hide_completed = request.args.get('hide_completed', 'false') == 'true'
     today = date.today()
 
     projects, all_tasks = _get_tasks_cached(today)
 
     if folder:
-        # Find tasks from the nearest _tasks.yaml ancestor of the document path
         filtered = _filter_tasks_by_folder(all_tasks, folder)
     else:
         filtered = _filter_tasks(all_tasks, project, include_private)
+
+    if owner:
+        owner_lower = owner.lower()
+        filtered = [t for t in filtered
+                    if any(o.lower() == owner_lower for o in t.get('_owners', []))]
+
+    if hide_completed:
+        filtered = [t for t in filtered
+                    if t.get('status') not in ('completed', 'cancelled')]
+
     return jsonify([_serialize_task(t) for t in filtered])
 
 
@@ -733,6 +747,57 @@ def api_tasks_grouped():
     return jsonify({
         status: [_serialize_task(t) for t in tasks_list]
         for status, tasks_list in groups.items()
+    })
+
+
+@app.route('/api/tasks/summary')
+def api_tasks_summary():
+    """Return per-project summary for dashboard cards.
+
+    Optional params:
+    - owner: filter 'my_count' by this owner name
+    """
+    include_private = request.args.get('private', 'false') == 'true'
+    owner = request.args.get('owner', config.MY_NAME)
+    today = date.today()
+
+    _, all_tasks = _get_tasks_cached(today)
+    if not include_private:
+        all_tasks = [t for t in all_tasks if not t.get('private', False)]
+
+    summary = task_parser.get_project_summary(all_tasks, my_name=owner)
+    return jsonify(summary)
+
+
+@app.route('/api/tasks/owners')
+def api_tasks_owners():
+    """Return all detected owners with task counts."""
+    include_private = request.args.get('private', 'false') == 'true'
+    today = date.today()
+
+    _, all_tasks = _get_tasks_cached(today)
+    if not include_private:
+        all_tasks = [t for t in all_tasks if not t.get('private', False)]
+
+    stats = task_parser.get_owner_stats(all_tasks)
+
+    result = []
+    for name, counts in sorted(stats.items(), key=lambda x: -x[1]['active']):
+        result.append({
+            'name': name,
+            'active': counts['active'],
+            'completed': counts['completed'],
+            'blocked': counts['blocked'],
+            'p0': counts['p0'],
+        })
+    return jsonify(result)
+
+
+@app.route('/api/tasks/config')
+def api_tasks_config():
+    """Return task view configuration (my_name, etc.)."""
+    return jsonify({
+        'my_name': config.MY_NAME,
     })
 
 

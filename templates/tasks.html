@@ -4,72 +4,114 @@
 {% block breadcrumb %}Tasks{% endblock %}
 
 {% block content %}
-<div class="page-title-row">
-    <h1 class="page-title">Tasks</h1>
-    <div class="view-controls">
-        <button id="view-kanban" class="btn btn-primary btn-sm">Kanban</button>
-        <button id="view-table" class="btn btn-secondary btn-sm">Table</button>
+<!-- Summary dashboard (default view) -->
+<div id="summary-view">
+    <div class="page-title-row">
+        <h1 class="page-title" id="summary-title">Tasks</h1>
+        <div class="view-controls">
+            <select id="owner-select" class="owner-select">
+                <option value="">All Tasks</option>
+            </select>
+        </div>
     </div>
+
+    <!-- Global stats bar -->
+    <div class="task-stats-bar" id="global-stats">
+        <div class="stat-chip stat-active"><span class="stat-value" id="stat-active">0</span><span class="stat-label">Active</span></div>
+        <div class="stat-chip stat-p0"><span class="stat-value" id="stat-p0">0</span><span class="stat-label">P0</span></div>
+        <div class="stat-chip stat-p1"><span class="stat-value" id="stat-p1">0</span><span class="stat-label">P1</span></div>
+        <div class="stat-chip stat-blocked"><span class="stat-value" id="stat-blocked">0</span><span class="stat-label">Blocked</span></div>
+        <div class="stat-chip stat-overdue"><span class="stat-value" id="stat-overdue">0</span><span class="stat-label">Overdue</span></div>
+        <div class="stat-chip stat-done"><span class="stat-value" id="stat-done-week">0</span><span class="stat-label">Done (7d)</span></div>
+    </div>
+
+    <!-- Smart view buttons -->
+    <div class="smart-views" id="smart-views">
+        <button class="btn btn-sm btn-secondary" onclick="openSmartView('p0')">All P0</button>
+        <button class="btn btn-sm btn-secondary" onclick="openSmartView('blocked')">All Blocked</button>
+        <button class="btn btn-sm btn-secondary" onclick="openSmartView('overdue')">All Overdue</button>
+        <button class="btn btn-sm btn-secondary" onclick="openSmartView('my')">My Tasks</button>
+    </div>
+
+    <!-- Project cards grid -->
+    <div class="project-cards-grid" id="project-cards"></div>
 </div>
 
-<!-- Filter badges: status + priority on one row -->
-<div class="filter-badges-row">
-    <div id="status-badges" class="day-badges"></div>
-    <span class="badge-separator"></span>
-    <div id="priority-badges" class="day-badges"></div>
-    <span class="badge-separator"></span>
-    <input type="text" id="filter-tags" placeholder="Filter by tag..." class="filter-input">
-</div>
+<!-- Project detail / filtered view (hidden by default) -->
+<div id="detail-view" class="hidden">
+    <div class="page-title-row">
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <button class="btn btn-sm btn-secondary" onclick="backToSummary()">&larr; Overview</button>
+            <h1 class="page-title" id="detail-title">Project</h1>
+        </div>
+        <div class="view-controls">
+            <button id="view-kanban" class="btn btn-primary btn-sm">Kanban</button>
+            <button id="view-table" class="btn btn-secondary btn-sm">Table</button>
+        </div>
+    </div>
 
-<!-- Kanban board -->
-<div id="kanban-board" class="kanban-board">
-    <div class="kanban-column">
-        <div class="kanban-column-header">
-            <span class="kanban-column-title">Pending</span>
-            <span class="kanban-count" id="count-pending">0</span>
-        </div>
-        <div id="col-pending" class="kanban-cards"></div>
+    <!-- Filter badges: owner + status + priority -->
+    <div class="filter-badges-row">
+        <div id="owner-badges" class="day-badges"></div>
+        <span class="badge-separator"></span>
+        <div id="status-badges" class="day-badges"></div>
+        <span class="badge-separator"></span>
+        <div id="priority-badges" class="day-badges"></div>
+        <span class="badge-separator"></span>
+        <input type="text" id="filter-tags" placeholder="Filter by tag..." class="filter-input">
     </div>
-    <div class="kanban-column">
-        <div class="kanban-column-header">
-            <span class="kanban-column-title" style="color: var(--cs-status-info);">In Progress</span>
-            <span class="kanban-count" id="count-in_progress">0</span>
-        </div>
-        <div id="col-in_progress" class="kanban-cards"></div>
-    </div>
-    <div class="kanban-column">
-        <div class="kanban-column-header">
-            <span class="kanban-column-title" style="color: var(--cs-status-warning);">Blocked</span>
-            <span class="kanban-count" id="count-blocked">0</span>
-        </div>
-        <div id="col-blocked" class="kanban-cards"></div>
-    </div>
-    <div class="kanban-column">
-        <div class="kanban-column-header">
-            <span class="kanban-column-title" style="color: var(--cs-status-success);">Completed (7d)</span>
-            <span class="kanban-count" id="count-completed">0</span>
-        </div>
-        <div id="col-completed" class="kanban-cards"></div>
-    </div>
-</div>
 
-<!-- Table view (hidden by default) -->
-<div id="table-view" class="hidden">
-    <div class="card" style="padding: 0; overflow: hidden;">
-        <table class="data-table">
-            <thead>
-                <tr>
-                    <th class="sortable-header" data-sort="id">ID</th>
-                    <th class="sortable-header" data-sort="priority">Priority</th>
-                    <th>Task</th>
-                    <th class="sortable-header" data-sort="project">Project</th>
-                    <th class="sortable-header" data-sort="status">Status</th>
-                    <th class="sortable-header" data-sort="due">Due</th>
-                    <th>Tags</th>
-                </tr>
-            </thead>
-            <tbody id="task-table-body"></tbody>
-        </table>
+    <!-- Kanban board -->
+    <div id="kanban-board" class="kanban-board">
+        <div class="kanban-column">
+            <div class="kanban-column-header">
+                <span class="kanban-column-title">Pending</span>
+                <span class="kanban-count" id="count-pending">0</span>
+            </div>
+            <div id="col-pending" class="kanban-cards"></div>
+        </div>
+        <div class="kanban-column">
+            <div class="kanban-column-header">
+                <span class="kanban-column-title" style="color: var(--cs-status-info);">In Progress</span>
+                <span class="kanban-count" id="count-in_progress">0</span>
+            </div>
+            <div id="col-in_progress" class="kanban-cards"></div>
+        </div>
+        <div class="kanban-column">
+            <div class="kanban-column-header">
+                <span class="kanban-column-title" style="color: var(--cs-status-warning);">Blocked</span>
+                <span class="kanban-count" id="count-blocked">0</span>
+            </div>
+            <div id="col-blocked" class="kanban-cards"></div>
+        </div>
+        <div class="kanban-column">
+            <div class="kanban-column-header">
+                <span class="kanban-column-title" style="color: var(--cs-status-success);">Completed (7d)</span>
+                <span class="kanban-count" id="count-completed">0</span>
+            </div>
+            <div id="col-completed" class="kanban-cards"></div>
+        </div>
+    </div>
+
+    <!-- Table view (hidden by default) -->
+    <div id="table-view" class="hidden">
+        <div class="card" style="padding: 0; overflow: hidden;">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th class="sortable-header" data-sort="id">ID</th>
+                        <th class="sortable-header" data-sort="priority">Priority</th>
+                        <th>Task</th>
+                        <th class="sortable-header" data-sort="owner">Owner</th>
+                        <th class="sortable-header" data-sort="project">Project</th>
+                        <th class="sortable-header" data-sort="status">Status</th>
+                        <th class="sortable-header" data-sort="due">Due</th>
+                        <th>Tags</th>
+                    </tr>
+                </thead>
+                <tbody id="task-table-body"></tbody>
+            </table>
+        </div>
     </div>
 </div>
 {% endblock %}

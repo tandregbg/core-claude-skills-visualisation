@@ -2134,3 +2134,215 @@ a.task-panel-item:hover {
     color: var(--cs-on-surface-tertiary);
     font-style: italic;
 }
+
+
+/* =================================================================
+   CR-005: Task Overview -- Summary Dashboard, Project Cards, Owners
+   ================================================================= */
+
+/* ---- Stats bar ---- */
+
+.task-stats-bar {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+}
+
+.stat-chip {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 12px 20px;
+    border-radius: var(--cs-border-radius-xs);
+    background: var(--cs-elevation-solid-1);
+    min-width: 72px;
+}
+
+.stat-chip .stat-value {
+    font-size: var(--cs-font-size-headline-md);
+    font-weight: var(--cs-font-weight-bold);
+    color: var(--cs-on-surface-primary);
+    line-height: 1;
+}
+
+.stat-chip .stat-label {
+    font-size: var(--cs-font-size-body-sm);
+    color: var(--cs-on-surface-tertiary);
+    margin-top: 4px;
+}
+
+.stat-chip.stat-alert {
+    background: color-mix(in srgb, var(--cs-status-critical) 12%, var(--cs-elevation-solid-1));
+}
+
+.stat-chip.stat-alert .stat-value {
+    color: var(--cs-status-critical);
+}
+
+.stat-chip.stat-p0 .stat-value { color: var(--cs-priority-p0); }
+.stat-chip.stat-blocked .stat-value { color: var(--cs-status-warning); }
+.stat-chip.stat-overdue .stat-value { color: var(--cs-status-critical); }
+.stat-chip.stat-done .stat-value { color: var(--cs-status-success); }
+
+/* ---- Smart views ---- */
+
+.smart-views {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+}
+
+/* ---- Owner select dropdown ---- */
+
+.owner-select {
+    padding: 6px 12px;
+    border-radius: var(--cs-border-radius-xs);
+    border: 1px solid var(--cs-elevation-solid-3);
+    background: var(--cs-elevation-solid-0);
+    color: var(--cs-on-surface-primary);
+    font-size: var(--cs-font-size-body-md);
+    cursor: pointer;
+}
+
+/* ---- Project cards grid ---- */
+
+.project-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 12px;
+}
+
+.project-task-card {
+    background: var(--cs-elevation-solid-1);
+    border-radius: var(--cs-border-radius-xs);
+    padding: 16px;
+    cursor: pointer;
+    transition: transform 0.1s, box-shadow 0.1s;
+    border-left: 3px solid transparent;
+}
+
+.project-task-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.project-task-card.card-has-p0 {
+    border-left-color: var(--cs-priority-p0);
+}
+
+.project-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.project-card-name {
+    font-size: var(--cs-font-size-body-lg);
+    font-weight: var(--cs-font-weight-semibold);
+    color: var(--cs-on-surface-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 180px;
+}
+
+.project-card-count {
+    font-size: var(--cs-font-size-headline-sm);
+    font-weight: var(--cs-font-weight-bold);
+    color: var(--cs-on-surface-secondary);
+}
+
+.project-card-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.card-stat {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-weight: var(--cs-font-weight-medium);
+}
+
+.card-stat-p0 {
+    background: color-mix(in srgb, var(--cs-priority-p0) 15%, transparent);
+    color: var(--cs-priority-p0);
+}
+
+.card-stat-blocked {
+    background: color-mix(in srgb, var(--cs-status-warning) 15%, transparent);
+    color: var(--cs-status-warning);
+}
+
+.card-stat-overdue {
+    background: color-mix(in srgb, var(--cs-status-critical) 15%, transparent);
+    color: var(--cs-status-critical);
+}
+
+.card-stat-my {
+    background: color-mix(in srgb, var(--cs-action-primary) 15%, transparent);
+    color: var(--cs-action-primary);
+}
+
+.card-stat-done {
+    background: color-mix(in srgb, var(--cs-status-success) 15%, transparent);
+    color: var(--cs-status-success);
+}
+
+/* ---- Owner badges ---- */
+
+.day-badge-owner {
+    background: var(--cs-elevation-solid-2);
+    color: var(--cs-on-surface-secondary);
+}
+
+.day-badge-owner.active {
+    background: var(--cs-action-primary);
+    color: var(--cs-action-on-action);
+}
+
+.day-badge-my {
+    border: 1px solid var(--cs-action-primary);
+}
+
+/* ---- Card owner label ---- */
+
+.card-owner {
+    font-size: 11px;
+    color: var(--cs-on-surface-tertiary);
+    margin-left: 4px;
+}
+
+.card-notes {
+    font-size: 11px;
+    color: var(--cs-on-surface-tertiary);
+    margin-left: 4px;
+}
+
+/* ---- Display ID in table ---- */
+
+.display-id {
+    font-family: monospace;
+    font-size: 12px;
+    color: var(--cs-on-surface-tertiary);
+}
+
+/* ---- Responsive ---- */
+
+@media (max-width: 768px) {
+    .project-cards-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .task-stats-bar {
+        gap: 8px;
+    }
+
+    .stat-chip {
+        padding: 8px 12px;
+        min-width: 56px;
+    }
+}

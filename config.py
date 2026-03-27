@@ -12,6 +12,7 @@ HISTORY_FILE = os.path.join(VAULT_PATH, '_tasks-history.md')
 INBOX_DIR = os.path.join(VAULT_PATH, '_inbox')
 INBOX_FILE = os.path.join(VAULT_PATH, '_inbox', '_inbox.yaml')
 CACHE_TTL = 30  # seconds before re-scanning vault files
+MY_NAME = os.environ.get('MY_NAME', 'Tomas')  # Default owner for "My Tasks" view
 
 # Settings file lives next to app.py (gitignored)
 SETTINGS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'settings.json')
